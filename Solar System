@@ -1,0 +1,394 @@
+#include <iostream>
+#include <cmath>
+#include <vector>
+#include <string>
+
+//////////////////////////////////////////////////////////////////
+
+class Triple {
+
+public:
+
+  float x;
+  float y;
+  float z;
+  Triple(float x_, float y_, float z_) :
+          x(x_), y(y_), z(z_) {};
+
+  //Triple(const Triple & r) : x(r.x), y(r.y), z(r.z) {};
+
+  Triple                //Declare method here
+  operator+ ( Triple d);
+
+  // kmd: Displacement operator-(Position)
+  Triple
+  operator- ( Triple  );
+
+  bool
+  operator== ( Triple );
+
+  Triple
+  operator* ( float );
+
+  double
+  operator* ( Triple );
+
+  //declare methods, but don't define them
+
+};
+
+
+class Time {                            //Defining Time class
+
+public:
+
+  int t;
+  Time(int t_) : t(t_) {}
+
+};
+
+
+
+class Displace : public Triple {          //Defining Displace class
+public:
+  Displace(Triple fooey) : Triple(fooey) {};
+
+};
+
+
+class Position : public Displace {        //Defining Position class
+
+public:
+  Position(Triple aeuera) :    //constructor for object of type position
+          Displace(aeuera) {};         // order of initializers must match member data
+
+  void
+  report();
+
+  Displace
+  operator-( Position );
+
+};
+
+
+class Velocity : public Triple {        //Defining Velocity class
+public:
+
+  Velocity(Triple v_) :
+          Triple(v_) {};
+
+  void
+  report();
+
+  Displace
+  operator* (Time ); //DEFINE
+
+
+};
+
+
+class Field : public Triple {           //Defining Field class
+public:
+  Field(Triple f_) :
+        Triple(f_) {}; 
+
+  void
+  report();
+
+
+  Velocity
+  operator* (Time );  //DEFINE
+
+};
+
+
+//////////////////////////////////////////////////////////////////
+Triple
+Triple::operator+ ( Triple e) {
+    return Triple(x+e.x, y+e.y, z+e.z);
+}
+
+double
+Triple::operator* ( Triple that) {
+    return x * that.x + (*this).y * that.y + this->z * that.z;
+}
+
+
+Triple
+Triple::operator* (float m) {
+    return Triple(x*m, y*m, z*m);
+}
+
+
+Triple
+Triple::operator- ( Triple d) {
+  return Triple(x-d.x, y-d.y, z-d.z);
+}
+
+bool
+Triple::operator== ( Triple d) {
+  return bool(d.x == x &&
+            d.y == y &&
+            d.z == z
+            );
+}
+/*
+
+bool
+Triple::operator== (Triple d) {
+  d = d - *this;
+  return (abs(d*d) < 1e-6);
+}
+*/
+
+void
+Position::report() {
+  std::cout << "The Position is: (" <<
+  x << ", " << y << ", " << z
+  << ")." << std::endl;
+}
+
+Displace
+Position::operator- (Position that) {
+  return (Triple) *this - (Triple) that;
+}
+
+
+Velocity
+Field::operator* (Time m) {
+    return Velocity( Triple(x*m.t, y*m.t, z*m.t));
+}
+
+
+Displace
+Velocity::operator* (Time m) {
+    return Displace( Triple(x*m.t, y*m.t, z*m.t));
+}
+
+
+//////////////////////////////////
+
+void
+Velocity::report() {
+  std::cout << "The Velocity is: (" <<
+  x << ", " << y << ", " << z
+  << ")." << std::endl;
+}
+
+//////////////////////////////////
+
+//defining objects of type 'Field', which has 3 components (field directions)
+
+
+void
+Field::report() {
+  std::cout << "Field = (" <<
+  x << ", " << y << ", " << z
+  << ")" << std::endl;
+}
+////////////////////////
+
+
+
+////////////////////////
+class Particle {
+
+  public:
+    std::string pID;  //ID of particle
+    float pm;         //mass of particle
+    Position r;       //position of particle
+    Velocity v;       //velocity of particle
+    
+    Particle (std::string pID_, float pm_, Position r_, Velocity v_) :    //constructor for object of Particle class
+      pID(pID_), pm(pm_), r(r_), v(v_) {} 
+
+    Position                //defining  position
+    position() {return r;}
+
+    Velocity
+    velocity() {return v;}  //defining particle's velocity
+
+    void
+    report(int t = 0) {                              //report particle info
+      std::cout << "pID: " << pID
+      << ", t = "    << t
+      << ", mass = " << pm
+      << ", r.x = " << r.x
+      << ", r.y = " << r.y
+      << ", r.z = " << r.z << std::endl;
+    }
+
+    Field
+    fieldat(Position h) {
+      //compute field due to this particle at pos. h = x3, y3, z3
+      
+      const float G = 6.67e-11;
+      
+
+      if (r == h) {
+        Field f( Triple(0, 0, 0));
+        return f;
+      }
+
+      else {
+        Displace d = r - h;
+        float R = sqrt(d * d);
+        float M = G*pm/(R*R*R);
+        //know mass, position
+        Field f(d*M);
+        if (0) 
+          std::cout << "   field calc due to "
+        << pID << " : pidx = " 
+        << r.x << " atx = " << h.x << " r-h= " << d.x
+        << " R = " << R << " pm = " << pm << " G = " << G
+        << " M = " << M << " fx = " << f.x
+        << std::endl;
+        return f;
+      }
+    }
+};
+///////////////////////
+
+Field
+fieldat(Position r, std::vector<Particle> vp) {
+  
+  Field f(Triple(0,0,0));
+
+  for (size_t n = 0; n < vp.size(); n++) {
+    Field df = vp[n].fieldat(r);
+    f = f + df;
+    if (0) 
+      std::cout << " at position " << r.x
+    << " field due to " << vp[n].pID << " dfx = " << df.x
+    << " fx = " << f.x
+    << std::endl;
+  }
+
+  return f;
+}
+
+
+
+/////////////////////////////////////////////
+/*
+class Delta {
+
+public:
+  std::vector<Displace> dr;
+  std::vector<Velocity> dv;
+
+  Delta() :
+  dr(dr_), dv(dv_) {};
+};
+*/
+//////////////
+
+
+/*
+
+Delta compute(std::vector<Particle> vp, std::vector<Field> vf, float dt) {
+
+  for (size_t n = 0; n < vp.size(); n++)
+    vp.velocity [n] = f = f + vp[n].fieldat(p);
+
+    return 
+};
+
+*/
+
+//////////////////////
+// Defining fieldat(h, vp) function, finds total field due to n particles at position p
+
+/////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////
+int main() {
+
+  std::vector<Particle> p;    //declaring vector named vp with elements of type Particle
+  p.push_back (Particle("Sun", 2e30,
+          Position(Triple(0, 0, 0)), Velocity(Triple(0, 0, 0))  ) );        //1st element called earth
+  p.push_back (Particle("Earth", 6e24,
+          Position(Triple( 1.5e11, 0, 0)), Velocity(Triple(0, 3e4, 0))  ) );
+  p.push_back (Particle("Moon", 7.3e22,
+          Position(Triple( 1.5e11, 3.84e8, 0)), Velocity(Triple(-1e3, 3e4, 0))  ) );
+
+//////////
+
+  int T = 5*365*24; // we said dt = 1week, so set T = 5*52 = 260.
+  Time dt = 3600;
+
+  for (int t = 0; t < T; ++t) {
+
+    // compute the field at each particle position due to all the other particles
+    std::vector<Velocity> dv;
+    std::vector<Displace> dr;
+    for (size_t n = 0; n < p.size(); n++) {        //for each particle,
+      Field f = fieldat( p[n].position() , p); //find field at it due to all others
+      dv.push_back( f * dt);
+      dr.push_back( p[n].v * dt);
+      if (0) std::cout << "  At time " << t << ", p" << n
+                << " f,dv,dr = " 
+                << " " << f.x
+                << " " << dv[n].y 
+                << " " << dr[n].y
+                << std::endl;
+    }
+
+    //update this info back into particle info:
+    for (size_t n = 0; n < p.size(); n++)  {          //for each particle,
+      p[n].r = p[n].r + dr[n]; 
+      p[n].v = p[n].v + dv[n];
+    
+
+    // report the positions and velocities of each particle
+   // for (size_t n = 0; n < p.size(); n++) p[n].report(t);
+    std::cout << ((int) t/24) << " " << (t % 24) 
+    << "  " << p[0].r.x << " " << p[0].r.y << " " << p[0].r.z
+    << "  " << p[1].r.x << " " << p[1].r.y << " " << p[1].r.z
+    << "  " << p[2].r.x << " " << p[2].r.y << " " << p[2].r.z
+    << std::endl;
+    }
+  }
+
+
+      //compute(vf, vv, dt) //spit out vector of Delta objects (Delta.dr, Delta.dv, based on 
+                      //Delta.dv[n] = vf[n]*dt
+
+                      //Delta.dr[n] = vv[n]*dt
+        //so we have to allow the operation field * time (int) = 
+
+
+
+    // compute the pending velocity update for each particle
+    //  std::vector<DeltaV> dv;
+
+    // compute the pending position update for each particle
+    //////////////////////////
+
+
+    // update the positions and velocities for each particle
+
+
+  //report field at each particle
+  //  for (size_t n = 0; n < vf.size(); n++) vf[n].report();
+
+  //  std::vector<Velocity> vv
+
+  return 0;
+}
+
+
+// construct an update class
+// it will hold a dvelocity and a dposition for each particle
+
+//     given a dt and a container of particles, compute the position and velocity updates
+
+//     apply the position and velocity updates to the particles in the container
+
+//    print the new positions and velocities
+
+// Now: print initial positions,velocities
+//      print final position,velocities
+
+// change to:  save to file, initial position and velocity
+
+// now loop T times , each time - saving position,velocity each time
