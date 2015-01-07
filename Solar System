@@ -5,6 +5,15 @@
 
 //////////////////////////////////////////////////////////////////
 
+class Time {                            //Defining Time class
+
+public:
+
+  int t;
+  Time(float t_) : t(t_) {}
+
+};
+
 class Triple {
 
 public:
@@ -33,17 +42,10 @@ public:
   double
   operator* ( Triple );
 
+  Triple
+  operator* ( Time );
+
   //declare methods, but don't define them
-
-};
-
-
-class Time {                            //Defining Time class
-
-public:
-
-  int t;
-  Time(int t_) : t(t_) {}
 
 };
 
@@ -102,7 +104,7 @@ public:
 };
 
 
-//////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////
 Triple
 Triple::operator+ ( Triple e) {
     return Triple(x+e.x, y+e.y, z+e.z);
@@ -141,13 +143,6 @@ Triple::operator== (Triple d) {
 }
 */
 
-void
-Position::report() {
-  std::cout << "The Position is: (" <<
-  x << ", " << y << ", " << z
-  << ")." << std::endl;
-}
-
 Displace
 Position::operator- (Position that) {
   return (Triple) *this - (Triple) that;
@@ -165,6 +160,19 @@ Velocity::operator* (Time m) {
     return Displace( Triple(x*m.t, y*m.t, z*m.t));
 }
 
+
+Triple
+Triple::operator* ( Time m){
+    return Triple(x*m.t, y*m.t, z*m.t);
+}
+
+//////////////////////////////////
+void
+Position::report() {
+  std::cout << "The Position is: (" <<
+  x << ", " << y << ", " << z
+  << ")." << std::endl;
+}
 
 //////////////////////////////////
 
@@ -208,14 +216,16 @@ class Particle {
     Velocity
     velocity() {return v;}  //defining particle's velocity
 
+    bool
+    operator== ( Particle );
+
+
     void
-    report(int t = 0) {                              //report particle info
-      std::cout << "pID: " << pID
-      << ", t = "    << t
-      << ", mass = " << pm
-      << ", r.x = " << r.x
-      << ", r.y = " << r.y
-      << ", r.z = " << r.z << std::endl;
+    report() {                              //report particle info
+      std::cout << "\t"<< pID
+      << " x = " << r.x
+      << " y = " << r.y
+      << "\tz = " << r.z << std::endl;
     }
 
     Field
@@ -224,13 +234,14 @@ class Particle {
       
       const float G = 6.67e-11;
       
-
+      ////CAN DELETE THIS LATER, SINCE R SHOULD NEVER EQUAL H WHEN WE EVALUATE THE FIELD
+      
       if (r == h) {
         Field f( Triple(0, 0, 0));
         return f;
       }
 
-      else {
+      //else {
         Displace d = r - h;
         float R = sqrt(d * d);
         float M = G*pm/(R*R*R);
@@ -245,150 +256,187 @@ class Particle {
         << std::endl;
         return f;
       }
-    }
+    //}
 };
+
+
+
+//Defining particles being equal
+bool
+Particle::operator== ( Particle d) {
+  return bool(pID == d.pID);
+}
+
+
 ///////////////////////
 
+// Defining fieldat(h, vp) function, finds total field due to n particles at position p
+
 Field
-fieldat(Position r, std::vector<Particle> vp) {
-  
+netfield(Particle p, std::vector<Particle> vp) {
+
   Field f(Triple(0,0,0));
 
+
   for (size_t n = 0; n < vp.size(); n++) {
-    Field df = vp[n].fieldat(r);
-    f = f + df;
-    if (0) 
-      std::cout << " at position " << r.x
-    << " field due to " << vp[n].pID << " dfx = " << df.x
+    
+    if (p == vp[n]) {
+    }
+
+    else {
+      f = f + vp[n].fieldat(p.r);
+    }
+
+    if (0)
+      std::cout << " at " << p.pID
+    << ", field due to " << vp[n].pID << ". dfx = " << vp[n].fieldat(p.r).x
     << " fx = " << f.x
     << std::endl;
   }
-
   return f;
+
 }
 
 
 
-/////////////////////////////////////////////
-/*
-class Delta {
 
-public:
-  std::vector<Displace> dr;
-  std::vector<Velocity> dv;
-
-  Delta() :
-  dr(dr_), dv(dv_) {};
-};
-*/
 //////////////
+//compute using Euler Method
+void compute(std::vector<Particle> p, Time dt, int T) {
+ 
+  for (int t = 0; t <= T; ++t) {    //at each time t,
+    std::cout <<"t"<< t;
+
+     // create a dr, dv vector to find the next state vector
+    std::vector<Velocity> dv; 
+    std::vector<Displace> dr;
+
+    for (size_t n = 0; n < p.size(); n++) {   //for each particle,
+      
+      p[n].report();  // report the positions and velocities
+
+      Field f = netfield( p[n] , p); //find field at p[n] due to all others
+      dv.push_back( f * dt);                   //find dv
+      dr.push_back( p[n].v * dt + (f*dt)*dt*0.5 );    //find dr
+      
+      if (0) std::cout << "  At time " << t << ", p" << n
+                << " f,dv,dr = " 
+                << " " << f.x
+                << " " << dv[n].x 
+                << " " << dr[n].x
+                << std::endl;
+    }
+    //update this info back into particle info:
+    for (size_t n = 0; n < p.size(); n++)  {
+      p[n].r = p[n].r + dr[n]; 
+      p[n].v = p[n].v + dv[n];
+    }
+  
+  }
+}
 
 
-/*
+void RKcompute(std::vector<Particle> p, Time dt, int T) {
 
-Delta compute(std::vector<Particle> vp, std::vector<Field> vf, float dt) {
-
-  for (size_t n = 0; n < vp.size(); n++)
-    vp.velocity [n] = f = f + vp[n].fieldat(p);
-
-    return 
-};
-
-*/
-
-//////////////////////
-// Defining fieldat(h, vp) function, finds total field due to n particles at position p
-
-/////////////////////////////////////////////////////////////////////
-/////////////////////////////////////////////////////////////////////
-int main() {
-
-  std::vector<Particle> p;    //declaring vector named vp with elements of type Particle
-  p.push_back (Particle("Sun", 2e30,
-          Position(Triple(0, 0, 0)), Velocity(Triple(0, 0, 0))  ) );        //1st element called earth
-  p.push_back (Particle("Earth", 6e24,
-          Position(Triple( 1.5e11, 0, 0)), Velocity(Triple(0, 3e4, 0))  ) );
-  p.push_back (Particle("Moon", 7.3e22,
-          Position(Triple( 1.5e11, 3.84e8, 0)), Velocity(Triple(-1e3, 3e4, 0))  ) );
-
-//////////
-
-  int T = 5*365*24; // we said dt = 1week, so set T = 5*52 = 260.
-  Time dt = 3600;
-
-  for (int t = 0; t < T; ++t) {
+  for (int t = 0; t <= T; ++t) {
+    std::cout <<"t"<< t;
 
     // compute the field at each particle position due to all the other particles
     std::vector<Velocity> dv;
     std::vector<Displace> dr;
-    for (size_t n = 0; n < p.size(); n++) {        //for each particle,
-      Field f = fieldat( p[n].position() , p); //find field at it due to all others
-      dv.push_back( f * dt);
-      dr.push_back( p[n].v * dt);
+
+    for (size_t n = 0; n < p.size(); n++) { 
+      // report the positions and velocities of each particle
+      p[n].report();
+
+      Particle q  = p[n];
+      Velocity j1 = q.v;               //velocity at initial
+      Field k1    = netfield(q , p);               //field at initial
+      
+      q.r = p[n].r + (j1*dt)*.5;
+      Velocity j2 = q.v + (k1*dt)*.5;    //velocity at midpt using field initial
+      Field k2    = netfield(q , p);     //field at midpt using velocity initial
+
+      q.r = p[n].r + (j2*dt)*.5;
+      Velocity j3 = q.v + (k2*dt)*.5;    //velocity at midpt. using field 
+      Field k3    = netfield(q , p);
+      
+      q.r = p[n].r + j3*dt;
+      Velocity j4 = q.v + k3*dt;
+      Field k4    = netfield( q, p);
+
+
+
+      dv.push_back( ((k1 + k2*2 + k3*2 + k4)*dt) *(1/6.)  );       //find dv
+      dr.push_back( ((j1 + j2*2 + j3*2 + j4)*dt) *(1/6.)  );       //find dr
+
+      
+
       if (0) std::cout << "  At time " << t << ", p" << n
                 << " f,dv,dr = " 
-                << " " << f.x
+                << " " << k1.x
                 << " " << dv[n].y 
                 << " " << dr[n].y
                 << std::endl;
     }
-
     //update this info back into particle info:
-    for (size_t n = 0; n < p.size(); n++)  {          //for each particle,
+    for (size_t n = 0; n < p.size(); n++)  {
       p[n].r = p[n].r + dr[n]; 
       p[n].v = p[n].v + dv[n];
-    
-
-    // report the positions and velocities of each particle
-   // for (size_t n = 0; n < p.size(); n++) p[n].report(t);
-    std::cout << ((int) t/24) << " " << (t % 24) 
-    << "  " << p[0].r.x << " " << p[0].r.y << " " << p[0].r.z
-    << "  " << p[1].r.x << " " << p[1].r.y << " " << p[1].r.z
-    << "  " << p[2].r.x << " " << p[2].r.y << " " << p[2].r.z
-    << std::endl;
     }
+  
   }
-
-
-      //compute(vf, vv, dt) //spit out vector of Delta objects (Delta.dr, Delta.dv, based on 
-                      //Delta.dv[n] = vf[n]*dt
-
-                      //Delta.dr[n] = vv[n]*dt
-        //so we have to allow the operation field * time (int) = 
-
-
-
-    // compute the pending velocity update for each particle
-    //  std::vector<DeltaV> dv;
-
-    // compute the pending position update for each particle
-    //////////////////////////
-
-
-    // update the positions and velocities for each particle
-
-
-  //report field at each particle
-  //  for (size_t n = 0; n < vf.size(); n++) vf[n].report();
-
-  //  std::vector<Velocity> vv
-
-  return 0;
 }
 
 
-// construct an update class
-// it will hold a dvelocity and a dposition for each particle
+//////////////////////
+/////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////
+int main() {
 
-//     given a dt and a container of particles, compute the position and velocity updates
+//USER INPUT
 
-//     apply the position and velocity updates to the particles in the container
+  std::vector<Particle> p;    //declaring vector named vp with elements of type Particle
+  
+  //now, to fill the particle vector with particles:
+  p.push_back (Particle("Sun", 2e30,
+          Position(Triple(0, 0, 0)), Velocity(Triple(0, 0, 0))  ) );        //1st element called earth
+  p.push_back (Particle("Earth", 6e24,
+          Position(Triple( 1.5e11, 0, 0)), Velocity(Triple(0, 3e4, 0))  ) );
+//  p.push_back (Particle("Moon", 7.3e22,
+//          Position(Triple( 1.5e11, 3.84e8, 0)), Velocity(Triple(-1e3, 3e4, 0))  ) );
 
-//    print the new positions and velocities
+  Time dt = 3600*24*4;       //step size for computation
+  int T = 365*1e3/4;             //number of total steps
 
-// Now: print initial positions,velocities
-//      print final position,velocities
+///////////////////
 
-// change to:  save to file, initial position and velocity
+  RKcompute(p, dt, T);
+//compute(p, dt, T);
 
-// now loop T times , each time - saving position,velocity each time
+
+
+
+//END OF PROGRAM            /////////////////////////////////////////
+
+//TO DO NEXT:
+//change to:  save to file, initial position and velocity
+//RKcompute
+//Find a way to estimate error/accuracy
+
+
+
+
+
+//////////////////////
+
+
+
+
+
+
+
+
+////////////////////////////////////////////
+  return 0;
+}
