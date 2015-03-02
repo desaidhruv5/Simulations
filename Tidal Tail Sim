@@ -1,0 +1,213 @@
+#include <iostream>
+#include <cmath>
+#include <vector>
+#include <string>
+#include <fstream>
+#include "Eigen/Eigen/Dense"
+
+//////////////////////////////////////////////////////////////////*
+
+
+//NEW BEGINNING///////////////////
+
+//need class disk, which would be vector of particles?
+
+
+class Particle {    //this is a vector of particles
+public:
+  float m;
+  Eigen::Vector3f r;
+  Eigen::Vector3f v;
+  float ye;
+
+  Particle (float m_, Eigen::Vector3f r_, Eigen::Vector3f v_, float ye_) :    //constructor for object of Particle class
+            m(m_),    r(r_),                 v(v_),                 ye(ye_){}
+
+
+  void
+  preport() {                              //report particle info
+    std::cout << "Mass:\t"<< m
+    << " x = " << r[0]
+    << " y = " << r[1]
+    << "\tz = " << r[2] << std::endl;
+    }
+  void
+  vreport() {                              //report particle info
+    std::cout << "Mass:\t"<< m
+    << " vx = " << v[0]
+    << " vy = " << v[1]
+    << "\tvz = "<< v[2] << std::endl;
+    }
+
+
+};
+///////////////////////////////////////////
+
+
+
+
+//later this will be array
+//DEFINING function 'Read' takes in file, outputs a vector of particles, a.k.a. 'disk'
+std::vector <Particle> read(std::ifstream & infile) {
+
+//STEPS:
+//reads each line, 1: creates object of type particle, 2:labels it, 3: assigns position, 4: assigns velocity, 5: ...
+
+  //here we define what each element on each line represents
+  float m, x, y, z, vx, vy, vz, u, ye, e, rho;
+
+  Eigen::Vector3f r;
+  Eigen::Vector3f v;
+  std::vector<Particle> disk;
+  Particle p(m, r, v, ye);
+
+  int i = 0;
+ 
+
+  while (!infile.eof()) {
+        //peek at first character.   
+    if (infile.peek() == '#') infile.ignore(256, '\n');    //is this "#"? If so, then ignore until next line
+      
+    else {
+      infile >> m >> x >> y >> z >> vx >> vy >> vz >> u >> ye >> e >> rho;
+      disk.push_back(p);              //creating entry for ith particle in the disk
+      disk[i].m = m;                  //mass of ith particle in the disk
+      disk[i].r[0] = x;         //ith particle of the disk, position vector, create x component
+      disk[i].r[1] = y;         //...
+      disk[i].r[2] = z; 
+      disk[i].v[0] = vx;         //ith particle of the disk, position vector, create x component
+      disk[i].v[1] = vy;         //...
+      disk[i].v[2] = vz;
+      disk[i].ye = ye;                //disk[i] is ith particle, ye is composition of particle
+
+      ++i;
+    }
+    
+  }
+
+
+
+  return disk;
+}
+
+
+
+
+//COMPUTING FIELD at position r away from black hole, which is at origin
+Eigen::Vector3f fieldon(Particle p) {
+  const float G = 1;
+  const float M = 7.942;    //mass of black hole, only source of gravitational field
+
+  float R = p.r.norm();
+
+  //know mass, position
+  return p.r*(-1*G*M/(R*R*R));
+}
+
+
+//work on arguments
+void RKcompute(std::vector<Particle> disk, float dt, const int & N) {
+
+  
+  for (int t = 0; t <= N; ++t) {
+    //std::cout <<"t"<< t;
+    disk[0].preport();
+    // compute the field at each particle position due to all the other particles
+    Eigen::Vector3f dv;
+    Eigen::Vector3f dr;
+
+
+    //need if statements -- if particle falls closer than <100km,
+    //then record the time, and stop updating that particle
+
+
+    //to find periapse, need to save closest position. if r_i^2 > r_(i+1)^2 then peri =r_(i+1). else, peri= r_i
+
+
+    for (size_t n = 0; n < disk.size(); n++) { 
+      // report the positions and velocities of each particle
+      //disk[0].preport();
+      //disk[n].vreport();
+
+
+      Particle p  = disk[n];
+      //std::vector<float> j1 = p.v;                 //velocity at initial
+      //Field k1    = fieldon(p);          //field at initial
+      
+      p.r = disk[n].r + .5*dt*p.v;
+      Eigen::Vector3f j2 = p.v + dt*.5*fieldon(p);    //velocity at midpt using field initial
+      Eigen::Vector3f k2 = fieldon(p);     //field at midpt using velocity initial
+
+      p.r = disk[n].r + .5*dt*j2;
+      Eigen::Vector3f j3 = p.v + dt*.5*k2;    //velocity at midpt. using field 
+      Eigen::Vector3f k3 = fieldon(p);
+      
+      p.r = disk[n].r + dt*j3;
+      Eigen::Vector3f j4 = p.v + dt*k3;
+      //std::vector<float> k4    = fieldon(p);
+
+
+      dv = dt/6.* ( fieldon(disk[n]) + 2*k2  + 2*k3  +  fieldon(p)  );       //find dv
+      dr = dt/6.* ( p.v              + 2*j2 +  2*j3  +  j4   );       //find dr
+    
+      
+      //update this info back into particle info:
+      disk[n].r = disk[n].r + dr; 
+      disk[n].v = disk[n].v + dv;
+
+    }
+  }
+}
+
+//////////////////////
+/////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////
+
+
+
+int main() {
+
+//USER INPUT
+
+  //now, to fill the particle vector with particles:
+  //p.push_back (Particle("1", 2e30,
+  //        Position(Triple(0, 0, 0)), Velocity(Triple(0, 0, 0)) ) );        //1st element called earth
+
+  float dt = 2;
+  float N  = 10;
+  //so total time elapsed is N*dt
+
+  
+  std::vector<Particle> disk;
+  std::ifstream infile("AllParticles.dat");
+  disk  = read(infile);
+
+///////////////////
+
+  RKcompute(disk, dt, N);
+  std::cout << N << std::endl;
+
+  return 0;
+}
+
+
+
+
+
+//END OF PROGRAM            /////////////////////////////////////////
+
+//TO DO NEXT:
+
+//Find a way to estimate error/accuracy
+
+
+
+
+
+//////////////////////
+
+
+
+
+
+////////////////////////////////////////////
