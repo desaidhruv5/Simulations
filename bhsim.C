@@ -26,6 +26,7 @@ Ye is the electron fraction.
 
 
 
+
 //checks direction of particle velocity
 //returns 1 if radial velocity is positive, else returns 0
 bool check (Eigen::Vector3f r, Eigen::Vector3f v) {
@@ -116,7 +117,7 @@ std::vector <Particle> read(std::ifstream & infile) {
 
 
       //now correct the velocities based on energy ( E = KE + PE )
-      float correctv = (   disk[i].u -  7.942/disk[i].r.norm()   )*2;
+      float correctv = (   disk[i].u - 1 + 7.942/disk[i].r.norm()   )*2;
       correctv = sqrt(correctv);
       std::cout << "correct: " << correctv << std::endl;
       std::cout << "actual: " << disk[i].v.norm() << std::endl;
