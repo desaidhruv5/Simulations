@@ -93,17 +93,18 @@ Particle RKupdate(Particle p1, float dt) { //This updates 1 particle via RK 4th 
 }
 
 
-
-Particle manevolve(std::vector<Particle> disk, float dt, float T = 2*3.141592653) {
+Particle manevolve(std::vector<Particle> disk, float N, float T = 2*3.14159265358979323846264) {
 //This will evolve all particles for a predetermined time, N*dt
 
   float t = 0;
   int   i = 1;
+  float dt = T/N;
   disk[0].preport();
+  Particle p = disk[0];
+
   while (t <= T) {    //begin time loop
 
-
-  	disk[0] = RKupdate(disk[0], dt);    //update particle
+  	p = RKupdate(p, dt);    //update particle
 
     //std::cout <<"t"<< i << "\t";
     //disk[0].preport();              //report just the first particle at each time
@@ -112,7 +113,7 @@ Particle manevolve(std::vector<Particle> disk, float dt, float T = 2*3.141592653
   	i = i + 1;
   }
 
-  return disk[0];
+  return p;
 
 }
 
@@ -166,11 +167,12 @@ int main(){
 //USER INPUT
 
 
-  float dt;
+  float N;
   //std::cout << "dt: ";
   //std::cin >> dt;
   //Total time is 2e5
-  dt = .01;
+  N = 9e3;
+  float T = 2*3.14159265358979323846264;
 
   //we want 1% error. So find the position it converges to by decreasing delta t sufficiently
 
@@ -187,21 +189,18 @@ int main(){
   //std::cout << "dot"<< disk[0].r.dot(disk[0].v)<< std::endl;
 
 
+  std::cout << "final position: " << manevolve(disk, N).r << std::endl;
 
-  //autevolve(disk, dt, outf);
-  manevolve(disk, dt);
-
-  Eigen::Vector3f p = manevolve(disk, dt).r;
+  Eigen::Vector3f p = manevolve(disk, N).r;
 
   Eigen::Vector3f r(1, 0 ,0);
   p = p - r;
   float d = p.norm(); //d = error, since d/radius = d/1 = d
 
-  std::cout << "dt: " << dt << std::endl;
-  std::cout << d << std::endl;
+  std::cout << "N: " << N << std::endl;
+  std::cout << "dt: " << T/N << std::endl;
 
-
-
+  std::cout << "error: " << d << std::endl;
 
 	return 0;
 }

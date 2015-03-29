@@ -119,9 +119,9 @@ std::vector <Particle> read(std::ifstream & infile) {
       //now correct the velocities based on energy ( E = KE + PE )
       float correctv = (   disk[i].u - 1 + 7.942/disk[i].r.norm()   )*2;
       correctv = sqrt(correctv);
-      std::cout << "correct: " << correctv << std::endl;
-      std::cout << "actual: " << disk[i].v.norm() << std::endl;
-      std::cout << (correctv - disk[i].v.norm() )/correctv << std::endl; 
+      //std::cout << "correct: " << correctv << std::endl;
+      //std::cout << "actual: " << disk[i].v.norm() << std::endl;
+      disk[i].v = disk[i].v * correctv/disk[i].v.norm();
 
 
 
@@ -193,7 +193,7 @@ void save(Particle p, std::ofstream & outf, float t) {
   outf << p.m << " " << p.r[0] << " " <<
   p.r[1] << " " << p.r[2] << " " <<
   p.v[0] << " " << p.v[1] << " " <<
-  p.v[2] << " " << p.ye << t << std::endl;
+  p.v[2] << " " << p.ye <<" " << t << std::endl;
 }
 
 
@@ -211,7 +211,7 @@ void autevolve(std::vector<Particle> disk, float dt, std::ofstream & tofile, flo
 
 
 
-    if (i % 10000) {
+    if (i % 1000 == 0) {
       std::cout << "step " << i << std::endl;
       std::cout << t/T*100 << " percent complete." << std::endl;
 
@@ -231,8 +231,7 @@ void autevolve(std::vector<Particle> disk, float dt, std::ofstream & tofile, flo
 
           //enter this case only if velocity ever used to be negative
           if (disk[n].vcheck == 0) {
-            save(disk[n], tofile, t);                   //save particle data to file
-            tofile << "t" << t << std::endl;
+            save(disk[n], tofile, t);                   //save particle data to file, along with time halted
             disk.erase(disk.begin() + n);   //when a particle is deleted
             n = n - 1;               //subtract 1 from the index, so the next particle isn't skipped
             //std::cout << "p" << n+1 << " was deleted" << std::endl;
@@ -329,18 +328,18 @@ int main() {
   //std::cout << "dt: ";
   //std::cin >> dt;
   //Total time is 2e5
-  dt = 1;
+  dt = .5;
 
   //we want 1% error. So find the position it converges to by decreasing delta t sufficiently,
 
   std::vector<Particle> disk;
-  std::ifstream infile("numbers.dat");
+  std::ifstream infile("AllParticles.dat");
 
   disk  = read(infile);
 
 ///////////////////
-  std::ofstream outf("output.dat");
-  outf << "# 1 m    2 rx  3 ry   4 rz   5 vx     6  vy  7  vz     8 ye " << std::endl;
+  std::ofstream outf("output1.dat");
+  outf << "# 1 m    2 rx  3 ry   4 rz   5 vx     6  vy  7  vz     8 ye            9 time" << std::endl;
   
 
   //std::cout << disk[0].v << ", " << disk[0].r << "velocity" <<
@@ -349,7 +348,7 @@ int main() {
   
 
 
-  //autevolve(disk, dt, outf);
+  autevolve(disk, dt, outf);
   //manevolve(disk, dt);
 
 
