@@ -11,16 +11,16 @@
 
 class Particle {    //this is a vector of particles
 public:
-  float m;
-  Eigen::Vector3f r;
-  Eigen::Vector3f v;
-  float u;
-  float ye;
+  double m;
+  Eigen::Vector3d r;
+  Eigen::Vector3d v;
+  double u;
+  double ye;
   bool vcheck;
 
 
 
-  Particle (float m_, Eigen::Vector3f r_, Eigen::Vector3f v_, float u_, float ye_) :    //constructor for object of Particle class
+  Particle (double m_, Eigen::Vector3d r_, Eigen::Vector3d v_, double u_, double ye_) :    //constructor for object of Particle class
             m(m_),    r(r_),                           v(v_),     u(u_),     ye(ye_){}
 
 
@@ -44,11 +44,11 @@ public:
 
 
 //COMPUTING FIELD at position r away from black hole, which is at origin
-Eigen::Vector3f fieldon(Particle p) {
-  const float G = 1;
-  const float M = 1;    //mass of black hole, only source of gravitational field
+Eigen::Vector3d fieldon(Particle p) {
+  const double G = 1;
+  const double M = 1;    //mass of black hole, only source of gravitational field
 
-  float R = p.r.norm();
+  double R = p.r.norm();
 
   //know mass, position
   return p.r*(-1*G*M/(R*R*R));
@@ -57,27 +57,27 @@ Eigen::Vector3f fieldon(Particle p) {
 
 
 
-Particle RKupdate(Particle p1, float dt) { //This updates 1 particle via RK 4th order method
+Particle RKupdate(Particle p1, double dt) { //This updates 1 particle via RK 4th order method
                                               //after a time step of 'dt'
 
-  Eigen::Vector3f dv;
-  Eigen::Vector3f dr;
+  Eigen::Vector3d dv;
+  Eigen::Vector3d dr;
 
   Particle p  = p1;
-  //std::vector<float> j1 = p.v;                 //velocity at initial
+  //std::vector<double> j1 = p.v;                 //velocity at initial
   //Field k1    = fieldon(p);          //field at initial
 
   p.r = p1.r + .5*dt*p.v;                       //approximates field at the 
-  Eigen::Vector3f j2 = p.v + dt*.5*fieldon(p1);    //velocity at midpt using field initial
-  Eigen::Vector3f k2 = fieldon(p);     //field at midpt using velocity initial
+  Eigen::Vector3d j2 = p.v + dt*.5*fieldon(p1);    //velocity at midpt using field initial
+  Eigen::Vector3d k2 = fieldon(p);     //field at midpt using velocity initial
 
   p.r = p1.r + .5*dt*j2;
-  Eigen::Vector3f j3 = p.v + dt*.5*k2;    //velocity at midpt. using field 
-  Eigen::Vector3f k3 = fieldon(p);
+  Eigen::Vector3d j3 = p.v + dt*.5*k2;    //velocity at midpt. using field 
+  Eigen::Vector3d k3 = fieldon(p);
 
   p.r = p1.r + dt*j3;
-  Eigen::Vector3f j4 = p.v + dt*k3;
-  //std::vector<float> k4    = fieldon(p);
+  Eigen::Vector3d j4 = p.v + dt*k3;
+  //std::vector<double> k4    = fieldon(p);
 
 
   dv = dt/6.* ( fieldon(p1) + 2*k2  + 2*k3  +  fieldon(p)  );       //find dv
@@ -85,7 +85,7 @@ Particle RKupdate(Particle p1, float dt) { //This updates 1 particle via RK 4th 
 
 
   //update this info back into particle info:
-  p.r = p1.r + dr; 
+  p.r = p1.r + dr;
   p.v = p1.v + dv;
 
 
@@ -93,16 +93,16 @@ Particle RKupdate(Particle p1, float dt) { //This updates 1 particle via RK 4th 
 }
 
 
-Particle manevolve(std::vector<Particle> disk, float N, float T = 2*3.14159265358979323846264) {
+Particle manevolve(std::vector<Particle> disk, double N, double T = 2*M_PI) {
 //This will evolve all particles for a predetermined time, N*dt
 
-  float t = 0;
+  double t = 0;
   int   i = 1;
-  float dt = T/N;
+  double dt = 1.*T/N;
   disk[0].preport();
   Particle p = disk[0];
 
-  while (t <= T) {    //begin time loop
+  while (t < T-1.e-10) {    //begin time loop
 
   	p = RKupdate(p, dt);    //update particle
 
@@ -111,7 +111,10 @@ Particle manevolve(std::vector<Particle> disk, float N, float T = 2*3.1415926535
 
   	t = t + dt;
   	i = i + 1;
+
   }
+  std::cout<<"Final time = " << t-2.*M_PI << "; Final step = "<<i-1<<std::endl;    
+  
 
   return p;
 
@@ -124,10 +127,10 @@ std::vector <Particle> read(std::ifstream & infile) {
 //reads each line, 1: creates object of type particle, 2:labels it, 3: assigns position, 4: assigns velocity, 5: ...
 
   //here we define what each element on each line represents
-  float m, x, y, z, vx, vy, vz, u, ye, e, rho;
+  double m, x, y, z, vx, vy, vz, u, ye, e, rho;
 
-  Eigen::Vector3f r;
-  Eigen::Vector3f v;
+  Eigen::Vector3d r;
+  Eigen::Vector3d v;
   std::vector<Particle> disk;
   Particle p(m, r, v, u, ye);
 
@@ -167,13 +170,12 @@ int main(){
 //USER INPUT
 
 
-  float N;
+  double N;
   //std::cout << "dt: ";
   //std::cin >> dt;
   //Total time is 2e5
-  N = 9e3;
-  float T = 2*3.14159265358979323846264;
-
+  N = 1e3;
+  double T = 2*M_PI;
   //we want 1% error. So find the position it converges to by decreasing delta t sufficiently
 
   std::vector<Particle> disk;
@@ -191,11 +193,11 @@ int main(){
 
   std::cout << "final position: " << manevolve(disk, N).r << std::endl;
 
-  Eigen::Vector3f p = manevolve(disk, N).r;
+  Eigen::Vector3d p = manevolve(disk, N,T).r;
 
-  Eigen::Vector3f r(1, 0 ,0);
+  Eigen::Vector3d r(1, 0 ,0);
   p = p - r;
-  float d = p.norm(); //d = error, since d/radius = d/1 = d
+  double d = p.norm();    //d = error, since d/radius = d/1 = d
 
   std::cout << "N: " << N << std::endl;
   std::cout << "dt: " << T/N << std::endl;
@@ -206,6 +208,8 @@ int main(){
 }
 
 
+///////////////////////////
+//plot log error vs. log dt
 
 
 

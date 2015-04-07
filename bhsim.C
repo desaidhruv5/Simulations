@@ -25,11 +25,9 @@ Ye is the electron fraction.
 
 
 
-
-
 //checks direction of particle velocity
 //returns 1 if radial velocity is positive, else returns 0
-bool check (Eigen::Vector3f r, Eigen::Vector3f v) {
+bool check (Eigen::Vector3d r, Eigen::Vector3d v) {
 
 
   bool b;
@@ -45,17 +43,19 @@ bool check (Eigen::Vector3f r, Eigen::Vector3f v) {
 
 class Particle {    //this is a vector of particles
 public:
-  float m;
-  Eigen::Vector3f r;
-  Eigen::Vector3f v;
-  float u;
-  float ye;
+  double m;
+  Eigen::Vector3d r;
+  Eigen::Vector3d v;
+  double u;
+  double ye;
+  double e;
+  double rho;
   bool vcheck;
 
 
 
-  Particle (float m_, Eigen::Vector3f r_, Eigen::Vector3f v_, float u_, float ye_) :    //constructor for object of Particle class
-            m(m_),    r(r_),                          v(v_),     u(u_),     ye(ye_){}
+  Particle (double m_, Eigen::Vector3d r_, Eigen::Vector3d v_, double u_, double ye_) :    //constructor for object of Particle class
+               m(m_),               r(r_),              v(v_),     u(u_),    ye(ye_) {}
 
 
 
@@ -79,17 +79,17 @@ public:
 
 
 //later this will be array
-//DEFINING function 'Read' takes in file, outputs a vector of particles, a.k.a. 'disk'
+//DEFINING function 'Read' takes in file, outputs vector of particles, a.k.a. 'disk', also corrects velocities based on energy
 std::vector <Particle> read(std::ifstream & infile) {
 
 //STEPS:
 //reads each line, 1: creates object of type particle, 2:labels it, 3: assigns position, 4: assigns velocity, 5: ...
 
   //here we define what each element on each line represents
-  float m, x, y, z, vx, vy, vz, u, ye, e, rho;
+  double m, x, y, z, vx, vy, vz, u, ye, e, rho;
 
-  Eigen::Vector3f r;
-  Eigen::Vector3f v;
+  Eigen::Vector3d r;
+  Eigen::Vector3d v;
   std::vector<Particle> disk;
   Particle p(m, r, v, u, ye);
 
@@ -111,13 +111,19 @@ std::vector <Particle> read(std::ifstream & infile) {
       disk[i].v[1] = vy;         //...
       disk[i].v[2] = vz;
       disk[i].u    = u;
-      disk[i].ye = ye;                //disk[i] is ith particle, ye is composition of particle
+
+
+      disk[i].ye = ye;               //disk[i] is ith particle, ye is composition of particle
+      disk[i].e    = e;
+      disk[i].rho    = rho;
+      
+
       disk[i].vcheck = check (disk[i].r, disk[i].v); //checking if intial radial velocity is positive/negative
 
 
 
       //now correct the velocities based on energy ( E = KE + PE )
-      float correctv = (   disk[i].u - 1 + 7.942/disk[i].r.norm()   )*2;
+      double correctv = (   disk[i].u - 1 + 7.942/disk[i].r.norm()   )*2;
       correctv = sqrt(correctv);
       //std::cout << "correct: " << correctv << std::endl;
       //std::cout << "actual: " << disk[i].v.norm() << std::endl;
@@ -136,14 +142,12 @@ std::vector <Particle> read(std::ifstream & infile) {
 }
 
 
-
-
 //COMPUTING FIELD at position r away from black hole, which is at origin
-Eigen::Vector3f fieldon(Particle p) {
-  const float G = 1;
-  const float M = 7.942;    //mass of black hole, only source of gravitational field
+Eigen::Vector3d fieldon(Particle p) {
+  const double G = 1;
+  const double M = 7.942;    //mass of black hole, only source of gravitational field
 
-  float R = p.r.norm();
+  double R = p.r.norm();
 
   //know mass, position
   return p.r*(-1*G*M/(R*R*R));
@@ -152,27 +156,27 @@ Eigen::Vector3f fieldon(Particle p) {
 
 
 
-Particle RKupdate(Particle p1, float dt) { //This updates 1 particle via RK 4th order method
+Particle RKupdate(Particle p1, double dt) { //This updates 1 particle via RK 4th order method
                                               //after a time step of 'dt'
 
-  Eigen::Vector3f dv;
-  Eigen::Vector3f dr;
+  Eigen::Vector3d dv;
+  Eigen::Vector3d dr;
 
   Particle p  = p1;
-  //std::vector<float> j1 = p.v;                 //velocity at initial
+  //std::vector<double> j1 = p.v;                 //velocity at initial
   //Field k1    = fieldon(p);          //field at initial
 
   p.r = p1.r + .5*dt*p.v;                       //approximates field at the 
-  Eigen::Vector3f j2 = p.v + dt*.5*fieldon(p1);    //velocity at midpt using field initial
-  Eigen::Vector3f k2 = fieldon(p);     //field at midpt using velocity initial
+  Eigen::Vector3d j2 = p.v + dt*.5*fieldon(p1);    //velocity at midpt using field initial
+  Eigen::Vector3d k2 = fieldon(p);     //field at midpt using velocity initial
 
   p.r = p1.r + .5*dt*j2;
-  Eigen::Vector3f j3 = p.v + dt*.5*k2;    //velocity at midpt. using field 
-  Eigen::Vector3f k3 = fieldon(p);
+  Eigen::Vector3d j3 = p.v + dt*.5*k2;    //velocity at midpt. using field 
+  Eigen::Vector3d k3 = fieldon(p);
 
   p.r = p1.r + dt*j3;
-  Eigen::Vector3f j4 = p.v + dt*k3;
-  //std::vector<float> k4    = fieldon(p);
+  Eigen::Vector3d j4 = p.v + dt*k3;
+  //std::vector<double> k4    = fieldon(p);
 
 
   dv = dt/6.* ( fieldon(p1) + 2*k2  + 2*k3  +  fieldon(p)  );       //find dv
@@ -188,18 +192,18 @@ Particle RKupdate(Particle p1, float dt) { //This updates 1 particle via RK 4th 
 }
 
 
-void save(Particle p, std::ofstream & outf, float t) {
+void save(Particle p, std::ofstream & outf, double t) {
 
   outf << p.m << " " << p.r[0] << " " <<
   p.r[1] << " " << p.r[2] << " " <<
   p.v[0] << " " << p.v[1] << " " <<
-  p.v[2] << " " << p.ye <<" " << t << std::endl;
+  p.v[2] << " " << p.u << " " << p.ye << " " << p.e << " " << p.rho << " " << t << std::endl;
 }
 
 
-void autevolve(std::vector<Particle> disk, float dt, std::ofstream & tofile, float T = 2e5) { //This will auto-stop
+std::vector<Particle> autevolve(std::vector<Particle> disk, double dt, std::ofstream & tofile, double T = 2e5) { //This will auto-stop
  
-  float t = 0;
+  double t = 0;
   int i = 0;
 
   std::cout << "Number of total steps ~ " << T/dt << std::endl;
@@ -225,41 +229,39 @@ void autevolve(std::vector<Particle> disk, float dt, std::ofstream & tofile, flo
 
         //try checking only every 10 steps, so that I can update accurately, but not enter the for loop as many times
         //this won't give me as accurate of an answer for the turning point, but it will be faster, as for loops are slow
-      if (i % 1 == 0) {
-        //enter if CURRENT radial velocity is positive
-        if (check(disk[n].r, disk[n].v) == 1) {
+     //if (i % 1 == 0) {
 
-          //enter this case only if velocity ever used to be negative
-          if (disk[n].vcheck == 0) {
-            save(disk[n], tofile, t);                   //save particle data to file, along with time halted
-            disk.erase(disk.begin() + n);   //when a particle is deleted
-            n = n - 1;               //subtract 1 from the index, so the next particle isn't skipped
-            //std::cout << "p" << n+1 << " was deleted" << std::endl;
-          }
+      //enter if CURRENT radial velocity is positive
+      if (check(disk[n].r, disk[n].v) == 1) {
 
-          //enter if within range but moving outwards, keep updating
-          else {
-            disk[n] = RKupdate(disk[n], dt);
-            //std::cout << "p" << n << " was updated, still moving outwards" << std::endl;
-          }
+        //enter this case only if velocity ever used to be negative
+        if (disk[n].vcheck == 0) {
+          save(disk[n], tofile, t);                   //save particle data to file, along with time halted
+          disk.erase(disk.begin() + n);   //when a particle is deleted
+          n = n - 1;               //subtract 1 from the index, so the next particle isn't skipped
+          //std::cout << "p" << n+1 << " was deleted" << std::endl;
         }
 
-
-
-        //ENTER IF particle is MOVING INWARDS
+        //enter if within range but moving outwards, keep updating
         else {
-          disk[n].vcheck = 0;       //affirms that the particle _has_ in the past had negative radial velocity
-          disk[n] = RKupdate(disk[n], dt);    //update for the case of falling particle
-          //std::cout << "p" << n << " is moving inwards"<< std::endl;
+          disk[n] = RKupdate(disk[n], dt);
+          //std::cout << "p" << n << " was updated, still moving outwards" << std::endl;
         }
-
-      } //end the stopping condition loop
-
-
-
-      else {
-        disk[n] = RKupdate(disk[n], dt); 
       }
+
+
+      //ENTER IF particle is MOVING INWARDS
+      else {
+        disk[n].vcheck = 0;       //affirms that the particle _has_ in the past had negative radial velocity
+        disk[n] = RKupdate(disk[n], dt);    //update for the case of falling particle
+        //std::cout << "p" << n << " is moving inwards"<< std::endl;
+      }
+
+     //} //end the stopping condition loop
+
+     //else {
+     //  disk[n] = RKupdate(disk[n], dt); 
+     //}
 
     }   //end looping over particles
 
@@ -274,19 +276,38 @@ void autevolve(std::vector<Particle> disk, float dt, std::ofstream & tofile, flo
   //AFTER TIME T, we must record the rest of the particles
   for (size_t n = 0; n < disk.size(); n++) {
     save(disk[n], tofile, t);
-    disk.erase(disk.begin() + n);   //when a particle is deleted
-    n = n - 1;               //subtract 1 from the index, so the next particle isn't skipped
+    //disk.erase(disk.begin() + n);   //when a particle is deleted
+    //n = n - 1;               //subtract 1 from the index, so the next particle isn't skipped
 
   }
 
-
+  return disk;
 
 }
 /////////////////////////////
 
-void manevolve(std::vector<Particle> disk, float dt, float T = 2e5){
+
+void solidangle(std::vector<Particle> disk, std::ofstream & outf) {
+
+  for (size_t n = 0; n < disk.size(); n++) {
+    if (disk[n].vcheck == 1) {
+      double tanphi;
+      double costheta;
+      tanphi = disk[n].v[1]/disk[n].v[0];
+      costheta = disk[n].v[2]/disk[n].v.norm();
+      outf << tanphi << " " << costheta << std::endl;
+    }
+  }
+}
+
+///////////////////////////////////////////////
+
+
+
+
+void manevolve(std::vector<Particle> disk, double dt, double T = 2e5){
 //This will evolve all particles for a predetermined time, N*dt
-  float t = 0;
+  double t = 0;
   int   i = 0;
   while (t < T) {    //begin time loop
 
@@ -321,36 +342,41 @@ void manevolve(std::vector<Particle> disk, float dt, float T = 2e5){
 
 int main() {
 
-//USER INPUT
+
+  double dt;
 
 
-  float dt;
+  //USER INPUT
   //std::cout << "dt: ";
   //std::cin >> dt;
   //Total time is 2e5
-  dt = .5;
+  dt = 2;
+  std::ifstream infile("AllParticles.dat");
+  std::ofstream outf1("output.dat");
+  std::ofstream outf2("angles.dat");
+  //END USER INPUT
 
-  //we want 1% error. So find the position it converges to by decreasing delta t sufficiently,
+
+  //we want 1% error. So find the position it converges to by decreasing delta t sufficiently
 
   std::vector<Particle> disk;
-  std::ifstream infile("AllParticles.dat");
-
   disk  = read(infile);
 
 ///////////////////
-  std::ofstream outf("output1.dat");
-  outf << "# 1 m    2 rx  3 ry   4 rz   5 vx     6  vy  7  vz     8 ye            9 time" << std::endl;
-  
+
+  outf1 << "# 1 m    2 rx  3 ry   4 rz   5 vx     6  vy  7  vz     8 u       9 ye       10 e      11 rho       12 time" << std::endl;
+  outf2 << "# tanphi  costheta" << std::endl;
 
   //std::cout << disk[0].v << ", " << disk[0].r << "velocity" <<
   //disk[0].vcheck << std::endl;
   //std::cout << "dot"<< disk[0].r.dot(disk[0].v)<< std::endl;
   
 
-
-  autevolve(disk, dt, outf);
+  std::vector<Particle> newdisk;
+  newdisk = autevolve(disk, dt, outf1);
   //manevolve(disk, dt);
 
+  solidangle(newdisk, outf2);
 
   return 0;
 }
@@ -359,11 +385,9 @@ int main() {
 //END OF PROGRAM            /////////////////////////////////////////
 
 //TO DO NEXT:
-//RKupdate
-//Find a way to estimate error/accuracy
-//turn into array
+//have it store the energies
 
-
+//difference between corrected/uncorrected velocities
 //////////////////////
 
 
