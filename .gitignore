@@ -1,3 +1,19 @@
 AllParticles.dat
 output1.dat
 halfdt corrected velocities.dat
+dt=2_angles.dat
+dt=2_corrected.dat
+dt=2_angles_uncorrected.dat
+dt=2_particles.dat
+dt=2_uncorrected.dat
+dt=4_angles.dat
+dt=4_particles.dat
+dt=half_angles.dat
+dt=half_particles.dat
+poster.aux
+poster.fdb_latexmk
+poster.log
+poster.pdf
+poster.synctex.gz
+poster.tex
+angles.dat

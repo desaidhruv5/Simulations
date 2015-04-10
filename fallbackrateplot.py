@@ -1,10 +1,13 @@
 import matplotlib.pyplot as plt
 import numpy as np
 plt.style.use('ggplot')
+plt.rc('text', usetex=True)
+plt.rc('font', family='serif')
+
 
 temp = []
 
-with open("dt=2_corrected.dat", "r") as infile:	#reading file of all masses with respective fallback times
+with open("dt=4_particles.dat", "r") as infile:	#reading file of all masses with respective fallback times
 	for line in infile:
 		if line.startswith("#"):
 			continue
@@ -107,23 +110,67 @@ for j in range(1,N):
 
 
 
+axis = []
+real_t = []
+
+M = 7.942
+
+for j in range(len(temp)):
+	if temp[j][7]<1:
+		real_t.append(temp[j][11])
+		axis.append(.5* M / (1.-temp[j][7])  )
+
+
+expect_t = []
+for j in range(len(axis)):
+	if 2*np.pi*( axis[j]**(3)/M )**(.5) > 2e5:
+		expect_t.append(2e5)
+	else:
+		expect_t.append( 2*np.pi*( axis[j]**(3)/M )**(.5)   )
+
+
+
+
+'''
+
+print "len(real_t)", len(real_t)
+print "len(expect_t)", len(expect_t)
+print "this should be less than len(time), which is ", len(time)
+
+
+plt.xlabel(r'measured time $(1 unit = 5* 10^{-6} seconds)$')
+plt.ylabel(r'theoretical time $(1 unit = 5* 10^{-6} seconds)$')
+plt.title('Expected vs. actual Fallback time of Particles')
+plt.plot(real_t, expect_t)
+
+#'''
+
+
 #''' This is mass rate plot:
 print "bin_time length: ", len(log_bintime)
 plt.plot(log_bintime, log_mrate)
-plt.ylabel('massrate (log Solar Masses)')
-plt.title('Log-Log: Massrate as a function of time')
+x=[-1.7, -.5]
+y=[ 0 , -2]
+plt.plot(x, y)
+plt.xlabel('time (log seconds)')
+plt.ylabel('Fallback rate (log Solar Masses per second)')
+plt.title(r'$\Delta t = 4$: Mass fallback rate')
 #'''
 
 
 '''This is cummulative mass plot:
-
-plt.xlabel('time (seconds)')
-plt.ylabel('cummulative mass (Solar Masses)')
-plt.title('Mass as a function of time')
-plt.plot(log_time, log_cu_mass)
-'''
-
 plt.xlabel('time (log seconds)')
+plt.ylabel('mass (log Solar Masses)')
+plt.title(r'$\Delta t = \frac12$: Cumulative fallback mass as a function of time')
+plt.plot(log_time, log_cu_mass)
+#'''
+
+
+
+
+
+
+
 plt.show()
 
 

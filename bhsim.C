@@ -53,7 +53,6 @@ public:
   bool vcheck;
 
 
-
   Particle (double m_, Eigen::Vector3d r_, Eigen::Vector3d v_, double u_, double ye_) :    //constructor for object of Particle class
                m(m_),               r(r_),              v(v_),     u(u_),    ye(ye_) {}
 
@@ -76,6 +75,7 @@ public:
 
 };
 ///////////////////////////////////////////
+
 
 
 //later this will be array
@@ -112,10 +112,9 @@ std::vector <Particle> read(std::ifstream & infile) {
       disk[i].v[2] = vz;
       disk[i].u    = u;
 
-
-      disk[i].ye = ye;               //disk[i] is ith particle, ye is composition of particle
+      disk[i].ye   = ye;               //disk[i] is ith particle, ye is composition of particle
       disk[i].e    = e;
-      disk[i].rho    = rho;
+      disk[i].rho  = rho;
       
 
       disk[i].vcheck = check (disk[i].r, disk[i].v); //checking if intial radial velocity is positive/negative
@@ -123,12 +122,14 @@ std::vector <Particle> read(std::ifstream & infile) {
 
 
       //now correct the velocities based on energy ( E = KE + PE )
+      
       double correctv = (   disk[i].u - 1 + 7.942/disk[i].r.norm()   )*2;
       correctv = sqrt(correctv);
-      //std::cout << "correct: " << correctv << std::endl;
-      //std::cout << "actual: " << disk[i].v.norm() << std::endl;
       disk[i].v = disk[i].v * correctv/disk[i].v.norm();
 
+
+      //std::cout << "correct: " << correctv << std::endl;
+      //std::cout << "actual: " << disk[i].v.norm() << std::endl;
 
 
 
@@ -291,11 +292,15 @@ void solidangle(std::vector<Particle> disk, std::ofstream & outf) {
 
   for (size_t n = 0; n < disk.size(); n++) {
     if (disk[n].vcheck == 1) {
-      double tanphi;
+      double atanphi;
+      double tan1;
+      double tan2;
       double costheta;
-      tanphi = disk[n].v[1]/disk[n].v[0];
+      tan1 = disk[n].v[1];
+      tan2 = disk[n].v[0];
+      atanphi = atan2(tan1, tan2);
       costheta = disk[n].v[2]/disk[n].v.norm();
-      outf << tanphi << " " << costheta << std::endl;
+      outf << atanphi << " " << costheta << std::endl;
     }
   }
 }
@@ -350,22 +355,20 @@ int main() {
   //std::cout << "dt: ";
   //std::cin >> dt;
   //Total time is 2e5
-  dt = 2;
-  std::ifstream infile("AllParticles.dat");
-  std::ofstream outf1("output.dat");
-  std::ofstream outf2("angles.dat");
+  dt = 10;
+  std::ifstream infile("numbers.dat");
+  std::ofstream particledat("output.dat");
+  std::ofstream angledat("angles.dat");
   //END USER INPUT
 
-
-  //we want 1% error. So find the position it converges to by decreasing delta t sufficiently
 
   std::vector<Particle> disk;
   disk  = read(infile);
 
 ///////////////////
 
-  outf1 << "# 1 m    2 rx  3 ry   4 rz   5 vx     6  vy  7  vz     8 u       9 ye       10 e      11 rho       12 time" << std::endl;
-  outf2 << "# tanphi  costheta" << std::endl;
+  particledat << "# 1 m    2 rx  3 ry   4 rz   5 vx     6  vy  7  vz     8 u       9 ye       10 e      11 rho       12 time" << std::endl;
+  angledat << "# phi  costheta" << std::endl;
 
   //std::cout << disk[0].v << ", " << disk[0].r << "velocity" <<
   //disk[0].vcheck << std::endl;
@@ -373,10 +376,10 @@ int main() {
   
 
   std::vector<Particle> newdisk;
-  newdisk = autevolve(disk, dt, outf1);
+  newdisk = autevolve(disk, dt, particledat);
   //manevolve(disk, dt);
-
-  solidangle(newdisk, outf2);
+  //std::cout << newdisk[0].m << ", " << newdisk[0].r << ", " << newdisk[0].v << std::endl;
+  solidangle(newdisk, angledat);
 
   return 0;
 }
@@ -389,7 +392,6 @@ int main() {
 
 //difference between corrected/uncorrected velocities
 //////////////////////
-
 
 
 
