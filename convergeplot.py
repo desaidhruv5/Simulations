@@ -22,7 +22,7 @@ log_error = np.log10(error)
 x=[1e-7, 1e-6]
 y=[1e-6,1e-2]
 
-plt.plot(x,y, label='slope = 4 (theoretical RK4 order of convergence)')
+plt.plot(x,y, label='slope = 4 (theoretical RK4 Global order of convergence)')
 
 plt.plot(dt, error, linewidth=1)
 plt.xlabel(r'$\Delta t$ [seconds]')

@@ -10,7 +10,6 @@
 //////////////////////////////////////////////////////////////////*
 
 /*
-That's about 1.5 million points, because it includes every single grid point for which
 1) The density is greater than 1.e-10 
 2) The radius is larger than 40
 A note on units: we set G=c=1 and solar mass = 1, hence
