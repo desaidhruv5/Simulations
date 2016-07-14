@@ -6,7 +6,7 @@ run by the Spectral Einstein Code (SpEC). ( Visit http://www.black-holes.org/SpE
 
 These simulations are of binary systems which consist of a neutron star (NS) orbiting around a central black hole (BH). Under appropriate conditions, such as the ones in these simulations, the NS is tidally disrupted as it falls into the BH. Low-energy matter falls in, energetic matter effectively slingshots around the BH and is ejected from the system, and matter in between forms an accretion disk.
 
-To learn more cool physics regarding these systems, visit http://www.black-holes.org/!
+To learn more about the cool physics of these systems, visit http://www.black-holes.org/!
 
 Data is taken at approximately ~10 ms (simulation time) into the simulation. This is near the beginning of the merger and during the formation of the accretion disk. Only particles that lie ~40 km away from the BH are used in this post-processing code. In this regime, we have deemed GR effects to be negligible and the Newtonian approximation of the gravitational potential to be sufficient.
 
