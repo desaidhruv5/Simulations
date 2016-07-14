@@ -17,13 +17,16 @@ MAIN EVOLUTION CODE
 
 'density.C' is the main post-processing evolution code, which evolves particles in a Newtonian potential.
 
-The code also relies on C++11. Use option -std=c++11 when compiling.
+*IMPORTANT* When compiling, use optimization option '-02' for short runtimes.
+
+The code also relies on C++11. Use option -std=c++11 when compiling. 
+
+INPUT FILE FOR EVOLUTION CODE:
 
 The code requires the input file, 'density.input', to run. Parameters are detailed below.
 
 
-
-The following parameters can be changed via the input file:
+The following parameters can be changed in the input file:
 
 Step size
 -- This is the step size of the simulation, which is constant throughout. This is in code units (1 second = 2e5 units of time in the code). Under 10 is recommended. Typically 2.
@@ -46,15 +49,18 @@ Total evolution time
 Heating
 -- This number turns heating on (= 1) or off (= 0). This effectively translates to a boost in velocity for particles, and applies mostly to those traveling outwards, away from the BH. Heating is due to radioactive decay of heavy elements formed by r-process nucleosynthesis.
 
+===========
+MEASURING THE RATE OF FALLBACK OF BOUND MATERIAL
+
+'fallback.py' measures and plots the rate at which matter falls back on to the black hole. For all particles in bound orbits, A particle is considered to have fallen back if it reaches the point of closest approach in its orbit (pericenter). Data is read from 'fallback.dat', which is produced by the evolution code. This file must be located in the same directory as 'fallback.py'.
+
 
 ===========
+PLOTTING THE DISTRIBUTION OF EJECTA
 
+'mapejecta.py' plots two 2d histograms, where color represents mass: (1) a mercator projection of the directions of velocities of unbound matter; and (2) a profile of velocities as a function of polar angle. Since particles may not all be lying in the xy-plane, a best-fit plane is found (via Singular Value Decomposition [SVD]), and coordinates are rotated such that most of the matter thereafter lies in a new x'y'-plane. SVD calculations increase runtime to just under a minute.
 
-
-
-
-
-
+'solidangle.py' has the same function as (1) of 'mapejecta.py', except that it does not transform coordinates and thus gives more immediate results.
 
 
 
