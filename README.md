@@ -1,4 +1,4 @@
-Black hole-neutron star merger simulation post processing code.
+Post-processing code for black hole-neutron star merger simulations
 ===========
 BACKGROUND
 Data is taken from General Relativistic (GR) - Hydrodynamic Simulations
@@ -14,22 +14,27 @@ This code is primarily concerned with the rate of fall back of bound matter, and
 
 ===========
 MAIN EVOLUTION CODE
+
 'density.C' is the main post-processing evolution code, which evolves particles in a Newtonian potential.
-The code requires the input file, 'density.input', to run.
+
+The code also relies on C++11. Use option -std=c++11 when compiling.
+
+The code requires the input file, 'density.input', to run. Parameters are detailed below.
+
 
 
 The following parameters can be changed via the input file:
 
-Step size:
+Step size
 -- This is the step size of the simulation, which is constant throughout. This is in code units (1 second = 2e5 units of time in the code). Under 10 is recommended. Typically 2.
 
-Mass:
--- This is the mass of the central black hole, in Solar Masses.
+Mass
+-- This is the mass of the central black hole, in solar masses.
 
-Filename:
+Filename
 -- This is the name of the file of initial data, taken from the SpEC simulation, which 'density.C' reads from. Format of the data should correspond to that described at the top of 'density.C'.
 
-Domain restrictions:
+Domain restrictions
 -- To filter out any particles in the initial data based on their properties, this must be set to 1, and 'density.C' must be editted appropriately, inside the 'read' function. For no filter (to read in all particles), set to 0.
 
 Number of nearest neighbors, _n_
