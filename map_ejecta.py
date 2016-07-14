@@ -7,6 +7,7 @@ from matplotlib.colors import LogNorm
 from numpy import linalg as la
 from numpy import matrix as mat
 from numpy.linalg import svd as svd
+from mpl_toolkits.mplot3d import Axes3D
 
 plt.style.use('ggplot')
 plt.rc('font', family = 'serif')
@@ -86,10 +87,7 @@ def remove_bound_particles(r_, v_, energy_, mass_):
   false_energy     = []
   r                = []
   v                = []
-  boundmass        = []
   energy_ = (1+.5*la.norm(v_,axis=1)**2-MASS/la.norm(r_,axis=1)).tolist()
-  #print vr.shape
-  #print mat(radial_velocity[:,0]).T.shape
 
   for j in range(len(mass_)):
     if  energy_[j]>1:
@@ -97,8 +95,6 @@ def remove_bound_particles(r_, v_, energy_, mass_):
       v.append(v_[j])
       energy.append(energy_[j])
       r.append(r_[j])
-    else:
-      boundmass.append(mass_[j])
   #vr = np.delete(vr, 0, 1)
 
 
@@ -114,8 +110,64 @@ def remove_bound_particles(r_, v_, energy_, mass_):
 
 
   print "Bound particles removed."
-  return r, v, energy, mass, boundmass
+  return r, v, energy, mass
 
+
+def pick_most_massive_marticles(velocity, mass):
+  pass
+  MED = np.percentile(mass, 90)
+  m   = []
+  v = []
+  #print vr.shape
+  #print mat(radial_velocity[:,0]).T.shape
+  print "90th percentile mass: ", MED
+
+  for j in range(len(mass)):
+    if mass[j] > MED:
+      v.append(velocity[j])
+      m.append(mass[j])
+  return v, m
+
+
+def calculate_c_U(velocity, mass):
+
+
+  v, m = pick_most_massive_marticles(velocity, mass)
+  #w_v = np.delete(w_v, 0, 1)    #deleting first column
+
+
+  v= np.array(v)          #Nx3
+  w_v = np.array(v).T*m   #3xN
+
+
+
+  c = w_v.sum(axis=1)/sum(mass)
+  #print "approx offset: ", c
+  M = mat(w_v)
+
+  print "commence svd..."
+  U, s, V = svd(M)
+  c=mat(c).T
+
+  return c, U
+  #return c, k
+
+
+
+def transform_coordinates(velocity, mass):
+
+
+  v = np.array(velocity)  #Nx3 array
+  print "wvshape ", v.shape
+  weighted_v = v.T*mass   #3xN array
+  offset = mat(weighted_v.sum(axis=1)).T/sum(mass)
+  print "actual offset: ", offset
+  c,U = calculate_c_U(velocity, mass)
+  #M = mat(mass*v.T - c)
+  M = mat(v.T)# - c)
+  new_v = (U.T*M).T
+
+  return new_v
 
 
 
@@ -185,21 +237,24 @@ data = extract(filename)
 r_, v_, u_, m_ = set_variables(data)
 
 
-r, v, u, m, b_m = remove_bound_particles(r_, v_, u_, m_)
+r, v, u, m = remove_bound_particles(r_, v_, u_, m_)
 m = [elem*100./(4.*math.pi) for elem in m]
 
-print "number of bound particles: ", len(b_m)
+v1= transform_coordinates(v, m)
 
-print "Amount of total bound mass: ", sum(b_m)
-print "Total unbound mass", sum(m)
+#v2= transform_coordinates(v1, m)
+#v3= transform_coordinates(v2, m)
+#print v_new.shape
+#print vr.type
 
 
-#v = rotate(np.pi, v)
-phi, cos = find_angles(v)
+
+v1 = rotate(np.pi, v1)
+phi, cos = find_angles(v1)
 
 print "Behold!"
 plot_solidangle(phi, cos, m, B)
-plot_v_map(phi, v, m, B)
+plot_v_map(phi, v1, m, B)
 
 #scaling, so that we get mass/steradian,   for each square
 

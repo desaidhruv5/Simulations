@@ -1,0 +1,8 @@
+# 1 - This is stepsize, dt. Total time T = 2e5.
+# 2 - Mass of black hole
+# 3 - where particles are initially read from
+# 4 - set to 1 if you want to restrict domain. In this case, MUST recompile bhsim
+3
+7.942
+AllParticles.dat
+0
