@@ -15,7 +15,7 @@ Data is taken at approximately ~10 ms (simulation time) into the simulation. Thi
 The code further evolves particles typically for ~1 second, and is primarily concerned with (1) the rate at which bound matter falls back to the black hole during the evolution, and (2) the distribution of ejecta, or unbound matter, at the end of the evolution.
 
 ===========
-* MAIN EVOLUTION CODE *
+MAIN EVOLUTION CODE
 
 'density.C' is the main post-processing evolution code, which evolves particles in a Newtonian potential. Densities are approximated, and a heating scheme is also incorporated.
 
@@ -30,40 +30,40 @@ The main evolution code requires the input file, 'density.input', to run. Parame
 
 The following parameters can be changed in the input file:
 
-Step size
+* Step size
 -- This is the step size of the simulation, which is constant throughout. This is in code units (1 second = 2e5 units of time in the code). Under 10 is recommended. Typically 2.
 
-Mass
+* Mass
 -- This is the mass of the central black hole, in solar masses.
 
-Filename
+* Filename
 -- This is the name of the file of initial data, taken from the SpEC simulation, which 'density.C' reads from. Format of the data should correspond to that described at the top of 'density.C'.
 
-Domain restrictions
+* Domain restrictions
 -- To filter out any particles in the initial data based on their properties, this must be set to 1, and 'density.C' must be editted appropriately, inside the 'read' function. For no filter (to read in all particles), set to 0.
 
-Number of nearest neighbors, _n_
+* Number of nearest neighbors, _n_
 -- This is related to density calculations made throughout the simulation. Density is approximated at a handful of particles based on their proximities to _n_ nearest neighbors. Typically 10-20. (This number includes the central particle itself, at which density is approximated, so _n_ - 1 other particles are looked at.)
 
-Total evolution time
+* Total evolution time
 -- This is the total time that the simulation runs for, in code units (conversion in "Step size", above).
 
-Heating
+* Heating
 -- This number turns heating on (= 1) or off (= 0). This effectively translates to a boost in velocity for particles, and applies mostly to those traveling outwards, away from the BH. Heating is due to radioactive decay of heavy elements formed by r-process nucleosynthesis.
 
 OUTPUT FILES:
 
 The code produces the following files, which are subsequently used for analysis by Python scripts (detailed below) :
 
-'fallback.dat' -- used to measure fallback rate
+* 'fallback.dat' -- used to measure fallback rate
 
-'solidangle.dat' -- used to map ejecta distribution at the end of the simulation
+* 'solidangle.dat' -- used to map ejecta distribution at the end of the simulation
 
-'densevo*' -- this set of files consists of the evolution of a handful of particles at which densities are approximated. 
+* 'densevo*' -- this set of files consists of the evolution of a handful of particles at which densities are approximated. 
 
-'cor'
+* 'cor'
 
-'comp_time.dat' -- this outputs rate at which simulation is progressing
+* 'comp_time.dat' -- this outputs rate at which simulation is progressing
 
 ===========
 MEASURING THE RATE OF FALLBACK OF BOUND MATERIAL
