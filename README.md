@@ -1,6 +1,6 @@
-Post-processing code for black hole-neutron star merger simulations
+#Post-processing code for black hole-neutron star merger simulations
 ===========
-BACKGROUND
+#BACKGROUND
 
 Data is taken from General Relativistic (GR) - Hydrodynamic Simulations
 run by the Spectral Einstein Code (SpEC). ( Visit http://www.black-holes.org/SpEC.html).
@@ -14,8 +14,8 @@ Data is taken at approximately ~10 ms (simulation time) into the simulation. Thi
 
 The code further evolves particles typically for ~1 second, and is primarily concerned with (1) the rate at which bound matter falls back to the black hole during the evolution, and (2) the distribution of ejecta, or unbound matter, at the end of the evolution.
 
-===========
-MAIN EVOLUTION CODE
+#===========
+#MAIN EVOLUTION CODE
 
 'density.C' is the main post-processing evolution code, which evolves particles in a Newtonian potential. Densities are approximated, and a heating scheme is also incorporated.
 
@@ -52,9 +52,6 @@ The following parameters can be changed in the input file:
 -- This number turns heating on (= 1) or off (= 0). This effectively translates to a boost in velocity for particles, and applies mostly to those traveling outwards, away from the BH. Heating is due to radioactive decay of heavy elements formed by r-process nucleosynthesis.
 
 OUTPUT FILES:
-#test
-
-$5^3$
 
 The code produces the following files, which are subsequently used for analysis by Python scripts (detailed below) :
 
@@ -68,7 +65,9 @@ The code produces the following files, which are subsequently used for analysis 
 
 * 'comp_time.dat' -- this outputs rate at which simulation is progressing
 
-===========
+
+#Python Scripts
+
 MEASURING THE RATE OF FALLBACK OF BOUND MATERIAL
 
 Data is read from 'fallback.dat'.
