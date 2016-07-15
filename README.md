@@ -52,6 +52,7 @@ The following parameters can be changed in the input file:
 -- This number turns heating on (= 1) or off (= 0). This effectively translates to a boost in velocity for particles, and applies mostly to those traveling outwards, away from the BH. Heating is due to radioactive decay of heavy elements formed by r-process nucleosynthesis.
 
 OUTPUT FILES:
+#test
 
 The code produces the following files, which are subsequently used for analysis by Python scripts (detailed below) :
 
