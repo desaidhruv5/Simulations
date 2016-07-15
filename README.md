@@ -20,7 +20,13 @@ The code further evolves particles typically for ~1 second, and is primarily con
 
 'density.C' is the main post-processing evolution code, which evolves particles in a Newtonian potential. Densities are approximated, and a heating scheme is also incorporated.
 
-*IMPORTANT*: When compiling, use optimization option '-02' to drastically reduce runtimes. This code requires C++11 to run. Use option -std=c++11 when compiling. The 'Eigen Library' is also required for the code to run. Once installed, place a symbolic link named, 'Eigen_lib', pointing to /usr/.../eigen/3.2.8/include/eigen3/, in the same directory.
+*IMPORTANT*:
+
++ When compiling, use optimization option '-02' to drastically reduce runtimes.
+
++ This code requires C++11 to run. Use option -std=c++11 when compiling.
+
++ The 'Eigen Library' is also required for the code to run. Once installed, place a symbolic link named, 'Eigen_lib', pointing to /usr/.../eigen/3.2.8/include/eigen3/, in the same directory.
 
 INPUT FILE FOR EVOLUTION CODE:
 
