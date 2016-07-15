@@ -54,15 +54,17 @@ The following parameters can be changed in the input file:
 OUTPUT FILES:
 #test
 
+$5^3$
+
 The code produces the following files, which are subsequently used for analysis by Python scripts (detailed below) :
 
 * 'fallback.dat' -- used to measure fallback rate
 
 * 'solidangle.dat' -- used to map ejecta distribution at the end of the simulation
 
-* 'densevo*' -- this set of files consists of the evolution of a handful of particles at which densities are approximated. 
+* 'densevo*.dat' -- this set of files consists of the evolution of a handful of particles at which densities are approximated. 
 
-* 'cor'
+
 
 * 'comp_time.dat' -- this outputs rate at which simulation is progressing
 
