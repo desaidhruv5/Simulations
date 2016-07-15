@@ -20,16 +20,11 @@ The code further evolves particles typically for ~1 second, and is primarily con
 
 'density.C' is the main post-processing evolution code, which evolves particles in a Newtonian potential. Densities are approximated, and a heating scheme is also incorporated.
 
-*IMPORTANT*: When compiling, use optimization option '-02' for short runtimes.
-
-This code also requires C++11 to run. Use option -std=c++11 when compiling.
+*IMPORTANT*: When compiling, use optimization option '-02' to drastically reduce runtimes. This code also requires C++11 to run. Use option -std=c++11 when compiling.
 
 INPUT FILE FOR EVOLUTION CODE:
 
-The main evolution code requires the input file, 'density.input', to run. Parameters are detailed below.
-
-
-The following parameters can be changed in the input file:
+The main evolution code requires the input file, 'density.input', to run. The following parameters can be changed in the input file:
 
 * Step size
 -- This is the step size of the simulation, which is constant throughout. This is in code units (1 second = 2e5 units of time in the code). Under 10 is recommended. Typically 2.
@@ -54,7 +49,7 @@ The following parameters can be changed in the input file:
 
 OUTPUT FILES:
 
-The code produces the following files, which are subsequently used for analysis by Python scripts (detailed below) :
+The code produces the following files, which are subsequently used for analysis with their respective Python scripts (detailed below):
 
 * 'fallback.dat' -- used to measure fallback rate
 
@@ -63,8 +58,7 @@ The code produces the following files, which are subsequently used for analysis 
 * 'densevo*.dat' -- this set of files consists of the evolution of a handful of particles at which densities are approximated. 
 
 
-
-* 'comp_time.dat' -- this outputs rate at which simulation is progressing
+* 'comp_time.dat' -- this outputs rate at which the simulation progresses
 
 
 #_Python Scripts_
@@ -75,9 +69,9 @@ Data is read from 'fallback.dat'.
 
 'fallback.py' measures and plots the rate at which matter falls back on to the black hole. For all particles in bound orbits, A particle is considered to have fallen back if it reaches the point of closest approach in its orbit (pericenter).
 
-'orbit.py'
-
+'orbit.py' predicts the fallback time for particles that have not yet fallen back, via Kepler's equations and orbital mechanics.
 ===========
+
 PLOTTING THE DISTRIBUTION OF EJECTA
 
 Data is read from 'solidangle.dat'.
@@ -85,6 +79,15 @@ Data is read from 'solidangle.dat'.
 'mapejecta.py' plots two 2d histograms, where color represents mass: (1) a mercator projection of the directions of velocities of unbound matter; and (2) a profile of velocities as a function of polar angle. Since particles may not all be lying in the xy-plane, a best-fit plane is found (via Singular Value Decomposition [SVD]), and coordinates are rotated such that most of the matter thereafter lies in a new x'y'-plane. SVD calculations increase runtime to just under a minute.
 
 'solidangle.py' has the same function as (1) of 'mapejecta.py', except that it does not transform coordinates and thus gives more immediate results.
+===========
+
+PLOTTING THE DISTRIBUTION OF EJECTA
+
+Data is read from all 'densevo*.dat' files.
+
+'densities.py' plots the evolution of densities at a handful of particles in the simulation, approximated by the number of nearest neighbors, _n_. Density is calculated by taking the mass of _n_ nearest neighbors, and dividing it by the volume of the smallest sphere enclosing the _n_ particles, centered at the tracer particle.
+
+
 
 
 
