@@ -87,7 +87,7 @@ PLOTTING APPROXIMATE DENSITIES THROUGHOUT EVOLUTION
 
 Data is read from all 'densevo*.dat' files.
 
-'densities.py' plots the evolution of densities at a handful of particles in the simulation, approximated by the number of nearest neighbors, _n_. Density is calculated by taking the mass of _n_ nearest neighbors, and dividing it by the volume of the smallest sphere enclosing the _n_ particles, centered at the tracer particle.
+'densities.py' plots the evolution of densities at a handful of tracer particles in the simulation, approximated by the proximity of their _n_ nearest neighbors. Density is calculated by taking the mass of _n_ nearest neighbors, and dividing it by the volume of the smallest sphere enclosing the _n_ particles, centered at the tracer particle.
 
 
 
