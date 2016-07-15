@@ -70,6 +70,7 @@ Data is read from 'fallback.dat'.
 'fallback.py' measures and plots the rate at which matter falls back on to the black hole. For all particles in bound orbits, A particle is considered to have fallen back if it reaches the point of closest approach in its orbit (pericenter).
 
 'orbit.py' predicts the fallback time for particles that have not yet fallen back, via Kepler's equations and orbital mechanics.
+
 ===========
 
 PLOTTING THE DISTRIBUTION OF EJECTA
@@ -79,6 +80,7 @@ Data is read from 'solidangle.dat'.
 'mapejecta.py' plots two 2d histograms, where color represents mass: (1) a mercator projection of the directions of velocities of unbound matter; and (2) a profile of velocities as a function of polar angle. Since particles may not all be lying in the xy-plane, a best-fit plane is found (via Singular Value Decomposition [SVD]), and coordinates are rotated such that most of the matter thereafter lies in a new x'y'-plane. SVD calculations increase runtime to just under a minute.
 
 'solidangle.py' has the same function as (1) of 'mapejecta.py', except that it does not transform coordinates and thus gives more immediate results.
+
 ===========
 
 PLOTTING THE DISTRIBUTION OF EJECTA
