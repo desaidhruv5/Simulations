@@ -13,7 +13,7 @@ plt.style.use('ggplot')
 plt.rc('font', family='serif')
 pi=np.pi
 
-MASS = 6.0552018
+
 
 
 #EXTRACT DATA
