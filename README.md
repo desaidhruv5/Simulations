@@ -83,7 +83,7 @@ Data is read from 'solidangle.dat'.
 
 ===========
 
-PLOTTING THE DISTRIBUTION OF EJECTA
+PLOTTING APPROXIMATE DENSITIES THROUGHOUT EVOLUTION
 
 Data is read from all 'densevo*.dat' files.
 
