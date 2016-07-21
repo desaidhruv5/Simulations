@@ -8,7 +8,7 @@ from numpy import linalg as la
 from numpy import matrix as mat
 plt.style.use('ggplot')
 plt.rc('font', family='serif')
-
+pi = np.pi
 
 def check_file_existence(FILENAME):
   not_found = FILENAME+ " not found."
@@ -81,12 +81,12 @@ def keep_bound_particles(mass_, r_, v_):
   for j in range(len(mass_)):
     if  energy[j]<1:
       mass.append(mass_[j])
-      v.append(v_[j])
       r.append(r_[j])
+      v.append(v_[j])
 
 
   print "Bound particles found."
-  return r, v, mass
+  return mass, r, v
 
 #############################################################
 
@@ -99,34 +99,58 @@ def keep_bound_particles(mass_, r_, v_):
 def follow_single_particle(r,v):
   
   #convert to SI
-  r = 1.48e3*np.array(r)
+  r = 1.477e3*np.array(r)
   v = 3e8*np.array(v)
 
   dist  = la.norm(r)
   speed = la.norm(v)
 
-
+  #defining eccentricity vector
   e1 = (speed**2/mu - 1/dist)*r
   e2 = (dot(r,v)/mu)*v
   e = e1 - e2
   ecc   = la.norm(e)
 
 
+  #defining true anomaly
+  if dot(v,r) >0:
+    true_anomaly = np.arccos(dot(e,r)/(dist*ecc))
+  else:
+    true_anomaly= 2*pi -np.arccos(dot(e,r)/(dist*ecc))
+    #print "true anomaly: ", true_anomaly
 
-  E = np.arccos(dot(e,r)/(dist*ecc))
 
+
+
+  factor = np.sqrt((1+ecc)/(1-ecc))
+  E = 2*np.arctan2(np.sin(true_anomaly/2), factor*np.cos(true_anomaly/2)  )
+
+
+
+  if E <0:
+    E = E + 2*pi
+    print "An E value is negative. Corrected."
+
+
+  #E is the eccentric anomaly
+
+  #Kepler's equation
   M  = E - ecc*np.sin(E)
+  
   delta_M = 2*pi - M
+  #delta_M = - M
+
 
   a  = 1/(2/dist - (speed**2)/mu)
-  n  = np.sqrt(mu/a**3)
-
+  n  = np.sqrt(mu/a**3)   #radians per second
+  if 2*pi/n<1e-5:
+    print "n: ", n
   fallback_time = delta_M/n
 
   return fallback_time
 
 
-def generate_fallback_times(rlist, vlist):
+def generate_fallback_times(rlist, vlist):    #in seconds
   t_fall = range(len(rlist))
   
   for j in range(len(rlist)):
@@ -139,11 +163,11 @@ def calc_fallback_rate(mass, time):
   
 
 
-  log_t_start = np.log10(time[0])
-  log_t_end = np.log10(time[-1])
+  log_t_start = np.log10(min(time))
+  log_t_end = np.log10(max(time))
 
-  B = np.logspace(log_t_start,log_t_end, num=81)
-  dm, bins, ignored = plt.hist(t, bins = B, weights = mass)
+  B = np.logspace(log_t_start,log_t_end, num=200)
+  dm, bins, ignored = plt.hist(time, bins = B, weights = mass)
   plt.close()
   T  = []
   dt = []
@@ -159,14 +183,15 @@ def calc_fallback_rate(mass, time):
 
 
 def plot_fallback(T, mdot):
+  plt.xscale('log')
+  plt.yscale('log')
   plt.plot(T, mdot, label = "Simulated fallback rate")
-
   plt.xlabel('time [seconds]')
   plt.ylabel(r'Fallback rate [$M_{\odot}/s$]')
 
 
   ##USER EDIT############
-  plt.title(r'M5_S9: Mass fallback rate')
+  plt.title(r'M5_S9: Predicted Mass fallback rate')
   #'''
   plt.legend()
   plt.savefig('%s_orbit_fallback.png' %NAME)
@@ -177,20 +202,41 @@ def plot_fallback(T, mdot):
 
 #############################################################
 #USE SI UNITS
-MASS = 6.0552018      #solar mass in kg
+MASS = 6.0552018     #solar mass in units of solar mass
 G = 6.67408e-11       #Gravitational constant in SI
-mu = MASS*G
+mu = MASS*G*1.989e30  #used for orbit calculations
+NAME = "M5_S9"
+TIMEAFTERMERGER= 346 + 15*2e5
+
 
 filename = check_file_existence("solidangle.dat")
 data = extract(filename)
 m_, r_, v_ = set_variables(data)
 
-m, r, v    = keep_bound_particles(m_, r_, v_)
-
-t = generate_fallback_times(r,v)
+#m, r, v  = keep_bound_particles(m_, r_, v_)
 
 
-T, Mrate = calc_fallback_rate(m, t)
+m, r, v  = m_, r_, v_
+
+
+t_ = generate_fallback_times(r,v)   #in seconds
+
+
+t=[]
+matter = []
+
+for j in range(len(t_)):
+  if t_[j]==t_[j]:
+    t.append(t_[j])
+    matter.append(m[j])
+
+
+
+
+t = [x +TIMEAFTERMERGER/2.27e5 for x in t]
+
+
+T, Mrate = calc_fallback_rate(matter, t)
 
 
 plot_fallback(T,Mrate)
