@@ -98,7 +98,8 @@ public:
   double temp;        //temperature
   bool vcheck;        //1 if particle is moving outwards, otherwise 0
   int id;             //initial index of particle in original list
-  bool dflag    = 0;  //(default is 0) set to 1 for particles that we track densities for
+  bool dflag   = 0;   //(default is 0) set to 1 for particles that we track densities for
+  double tapo  = 0;
   
 
   Particle (double m_, Eigen::Vector3d r_, Eigen::Vector3d v_) :    //constructor for object of Particle class
@@ -166,17 +167,17 @@ bool compdist (const Particle & p1, const Particle & p2, const Particle & center
 
 
 //Make separate velocity correction function here
-void correct_velocity(Particle & p, std::ofstream & outf)
+void correct_velocity(Particle & p)//, std::ofstream & outf)
 {
   //now correct the velocities based on energy ( E = KE + PE )
-  outf << p.m << " "<< p.r[0] << " " << p.r[1] << " " << p.r[2] <<" "<< p.v[0]<< " " << p.v[1] << " " << p.v[2]<< " ";
-  outf << p.u << " ";
+  //outf << p.m << " "<< p.r[0] << " " << p.r[1] << " " << p.r[2] <<" "<< p.v[0]<< " " << p.v[1] << " " << p.v[2]<< " ";
+  //outf << p.u << " ";
   double correctv = (   p.u - 1 + MASS/p.r.norm()   )*2;
   correctv = sqrt(correctv);
   p.v = p.v * correctv/p.v.norm();
 
   double new_energy = 1+ .5*p.v.norm()*p.v.norm()-MASS/p.r.norm();
-  outf << p.v[0]<< " " << p.v[1] << " " << p.v[2]<< " "<< new_energy << std::endl;
+  //outf << p.v[0]<< " " << p.v[1] << " " << p.v[2]<< " "<< new_energy << std::endl;
   //std::cout << "correct: " << correctv << std::endl;
 }
 
@@ -215,13 +216,13 @@ void correct_velocity(Particle & p, std::ofstream & outf)
 //-------------------------------------------------------------------------------------------------
 
 
-//'read' takes in file, outputs vector of particles, a.k.a. 'disk'
+//'read' takes in file, outputs vector of particles, a.k.a. 'tail'
 //also corrects velocities based on energy
 std::vector <Particle> read(std::ifstream & particledat)
 {
 
 
-  std::cout << "Reading in particles from disk..." << std::endl;
+  std::cout << "Reading in particles from tail..." << std::endl;
 //STEPS:
 //reads each line in file containing original list of particles
 //1: creates object of type particle, 2:labels it, 3: assigns position, 4: assigns velocity, 5: ...
@@ -233,7 +234,7 @@ std::vector <Particle> read(std::ifstream & particledat)
 
   Eigen::Vector3d r;
   Eigen::Vector3d v;
-  std::vector<Particle> disk;
+  std::vector<Particle> tail;
   Particle p(m, r, v);
 
   int i = 0;
@@ -243,7 +244,7 @@ std::vector <Particle> read(std::ifstream & particledat)
   {
         //peek at first character.   
     if (particledat.peek() == '#') particledat.ignore(256, '\n');  //does the line start with "#"? If so, ignore until new line
-      
+    
     else
     {
       particledat >> m >> x >> y >> z >> vx >> vy >> vz >> u >> rho >> temp >> ye >> e;
@@ -264,34 +265,34 @@ std::vector <Particle> read(std::ifstream & particledat)
       )
       
       {
-        disk.push_back(p);              //creating entry for ith particle in the disk
-        disk[i].m    = m;                  //mass of ith particle in the disk
-        disk[i].r[0] = x;          //ith particle of the disk, position vector, create x component
-        disk[i].r[1] = y;          //...
-        disk[i].r[2] = z; 
-        disk[i].v[0] = vx;         //ith particle of the disk, position vector, create x component
-        disk[i].v[1] = vy;         //...
-        disk[i].v[2] = vz;
-        disk[i].u    = u;
-        disk[i].ye   = ye;               //disk[i] is ith particle, ye is composition of particle
-        disk[i].e    = e;
-        disk[i].rho  = rho;
-        disk[i].temp = temp;
-        disk[i].id   = i;
-        //std::cout << "id: " << disk[i].id << std::endl;
-        disk[i].vcheck = check (disk[i].r, disk[i].v); //checking if intial radial velocity is positive/negative
+        tail.push_back(p);              //creating entry for ith particle in the tail
+        tail[i].m    = m;                  //mass of ith particle in the tail
+        tail[i].r[0] = x;          //ith particle of the tail, position vector, create x component
+        tail[i].r[1] = y;          //...
+        tail[i].r[2] = z; 
+        tail[i].v[0] = vx;         //ith particle of the tail, position vector, create x component
+        tail[i].v[1] = vy;         //...
+        tail[i].v[2] = vz;
+        tail[i].u    = u;
+        tail[i].ye   = ye;               //tail[i] is ith particle, ye is composition of particle
+        tail[i].e    = e;
+        tail[i].rho  = rho;
+        tail[i].temp = temp;
+        tail[i].id   = i;
+        //std::cout << "id: " << tail[i].id << std::endl;
+        tail[i].vcheck = check (tail[i].r, tail[i].v); //checking if intial radial velocity is positive/negative
 
         //now correct the velocities based on energy ( E = KE + PE )
-        correct_velocity(disk[i], corrected);
+        correct_velocity(tail[i]);//, corrected);
 
         //-pi/4 to pi/4, r > 70
 
 
-        //std::cout << "actual: " << disk[i].v.norm() << std::endl;
+        //std::cout << "actual: " << tail[i].v.norm() << std::endl;
 
 
         //std::cout << "i=" << i << std::endl;
-        //std::cout << "m=" << disk[i].m << std::endl;
+        //std::cout << "m=" << tail[i].m << std::endl;
         int mod = 10000;
         if (i % mod==0) std::cout << "Approximate number of particles read: "<< i << "\r"<<std::flush;
         ++i;
@@ -300,8 +301,8 @@ std::vector <Particle> read(std::ifstream & particledat)
     }
     
   }
-  std::cout << "There are " << disk.size()<<" particles." << std::endl;
-  return disk;
+  std::cout << "There are " << tail.size()<<" particles." << std::endl;
+  return tail;
 }
 
 //__________________________________________________________________________
@@ -340,11 +341,11 @@ Eigen::Vector3d fieldon(const Particle & p)
 
 
 //This updates 1 particle via RK 4th order method
-void RKupdate(Particle & p, const double & dt) { 
+void RKupdate(Particle & p, const double & dt)
+{ 
                                               //after a time step of 'dt'
 
-  Eigen::Vector3d dv;
-  Eigen::Vector3d dr;
+  Eigen::Vector3d dr, dv;   //declare changes in position/velocity. To be added to present state variables
   Particle p_ = p;
 
   //declaring RK variables k1, k2, etc.
@@ -367,7 +368,7 @@ void RKupdate(Particle & p, const double & dt) {
   ka4  = fieldon(p_);
 
 
-  dv = dt/6.* ( ka1 + 2*ka2  + 2*ka3  + ka4  );       //find dv
+  dv = dt/6.* ( ka1 + 2*ka2  + 2*ka3  + ka4  );
   dr = dt/6.* ( kv1 + 2*kv2  + 2*kv3  + kv4  );
 
 
@@ -387,7 +388,7 @@ void RKupdate(Particle & p, const double & dt) {
 
 //choosing particles to be flagged, to measure density at
 //outputs list of indices
-void set_dflags(std::vector<Particle> & disk)
+void set_dflags(std::vector<Particle> & tail)
 {
   std::cout << "Finding candidate particles where density can be approximated." << std::endl;
   std::string densityfile;
@@ -395,11 +396,11 @@ void set_dflags(std::vector<Particle> & disk)
 
   //FIND ALL PARTICLES SATISFYING REQUIREMENT
   std::vector<Particle> unbound;
-  for (int j = 0; j < int(disk.size()); ++j)
+  for (int j = 0; j < int(tail.size()); ++j)
   {
-    if (disk[j].u > 1 && disk[j].r.norm() > 100/1.48)
+    if (tail[j].u > 1 && tail[j].r.norm() > 100/1.48)
     {
-      unbound.push_back(disk[j]);
+      unbound.push_back(tail[j]);
     }
   }
   std::cout << unbound.size() << " particles meet tracer requirement. Choosing "<< Dcount<<" particles." << std::endl;
@@ -410,14 +411,14 @@ void set_dflags(std::vector<Particle> & disk)
   {
 
     int ID = unbound[j].id;
-    //std::cout<< "energy of particle stored "<< disk[dindex].u << std::endl;
-    disk[ID].dflag= 1;
+    //std::cout<< "energy of particle stored "<< tail[dindex].u << std::endl;
+    tail[ID].dflag= 1;
 
-    densityfile = "densevo"+ std::to_string(disk[ID].id) + ".dat";
+    densityfile = "densevo"+ std::to_string(tail[ID].id) + ".dat";
     densitydat.open(densityfile);
     densitydat.close();
 
-    std::cout << "Distance of particle " << disk[ID].id<< ": " << disk[ID].r.norm()*1.48 << " km." << std::endl;
+    std::cout << "Distance of particle " << tail[ID].id<< ": " << tail[ID].r.norm()*1.48 << " km." << std::endl;
     //std::cout << "Should be " << 100/1.48<<std::endl;
     //std::cout<< "Creating new tracker particle: "<< std::endl;
     j = j + int(unbound.size())/Dcount;
@@ -432,7 +433,7 @@ void set_dflags(std::vector<Particle> & disk)
 //we want it to only calculate density if it is also a tracer particle
 
 
-void density_calculation(std::vector<Particle> & disk, const double & t)
+void density_calculation(std::vector<Particle> & tail, const double & t)
 {
   std::string densityfile;
   std::ofstream densitydat(densityfile);
@@ -442,21 +443,21 @@ void density_calculation(std::vector<Particle> & disk, const double & t)
 
   while (i < Dcount)    //loop through all particles, only increment i when we find tracer particle
   {
-    if (disk[j].dflag == 1)     //make sure it's a tracer particle && make sure it hasn't fallen back
+    if (tail[j].dflag == 1)     //make sure it's a tracer particle && make sure it hasn't fallen back
     {
-      Particle center = disk[j];
+      Particle center = tail[j];
 
-      //std::cout << "dflag: "<< disk[j].dflag <<", for disk[j].id: "<< disk[j].id << std::endl;
+      //std::cout << "dflag: "<< tail[j].dflag <<", for tail[j].id: "<< tail[j].id << std::endl;
       
-      //std::cout << "i: "<< i <<", j: "<< j << ", and disk id of flagged particle: " << center.id << std::endl;
-      densityfile = "densevo"+ std::to_string(disk[j].id) + ".dat"; //setting correct file for info to be stored
+      //std::cout << "i: "<< i <<", j: "<< j << ", and tail id of flagged particle: " << center.id << std::endl;
+      densityfile = "densevo"+ std::to_string(tail[j].id) + ".dat"; //setting correct file for info to be stored
       densitydat.open(densityfile, std::ofstream::app);
       //once Neighbors is filled with N-1 particles (in order, closest to farthest),
-      //check if the next new disk particle is closer than Nth farthest particle (last one in list)
-      //If not, move on to next disk particle
+      //check if the next new tail particle is closer than Nth farthest particle (last one in list)
+      //If not, move on to next tail particle
 
       //std::cout << "number of nearest neighbors= " << nnn << std::endl;
-      //std::cout << "last disk id"<< disk[disk.size()-1].id << std::endl;
+      //std::cout << "last tail id"<< tail[tail.size()-1].id << std::endl;
 
       //define comparison function which is modified each time depending on centered particle
 
@@ -466,16 +467,16 @@ void density_calculation(std::vector<Particle> & disk, const double & t)
       };
 
 
-      //making copy of disk and sorting that, so we can maintain order in original disk
-      std::vector<Particle> ordered_disk = disk;
-      std::partial_sort(ordered_disk.begin(), ordered_disk.begin()+nnn, ordered_disk.end(), compare);
-      //std::cout << "after sort, last disk id" << disk[disk.size()-1].id << std::endl;
+      //making copy of tail and sorting that, so we can maintain order in original tail
+      std::vector<Particle> ordered_tail = tail;
+      std::partial_sort(ordered_tail.begin(), ordered_tail.begin()+nnn, ordered_tail.end(), compare);
+      //std::cout << "after sort, last tail id" << tail[tail.size()-1].id << std::endl;
 
-      //std::cout << "after sort id" << disk[0].id << " "<<(densityevo[denseinc].r- disk[0].r).norm() << std::endl;
-      //std::cout << "after sort id" << disk[nnn-1].id << " "<<(densityevo[denseinc].r- disk[nnn-1].r).norm() << std::endl;
+      //std::cout << "after sort id" << tail[0].id << " "<<(densityevo[denseinc].r- tail[0].r).norm() << std::endl;
+      //std::cout << "after sort id" << tail[nnn-1].id << " "<<(densityevo[denseinc].r- tail[nnn-1].r).norm() << std::endl;
 
       //Calculating radius of sphere
-      double rad = (disk[j].r- ordered_disk[nnn-1].r ).norm(); //distance of particle farthest away from center
+      double rad = (tail[j].r- ordered_tail[nnn-1].r ).norm(); //distance of particle farthest away from center
 
 
       //Volume of sphere
@@ -486,22 +487,22 @@ void density_calculation(std::vector<Particle> & disk, const double & t)
       double mtot = 0;
       for (int k = 0; k < nnn-1; k++)
       {
-        mtot = mtot + ordered_disk[k].m;
-        //std::cout << "id: " << ordered_disk[k].id<< std::endl;
+        mtot = mtot + ordered_tail[k].m;
+        //std::cout << "id: " << ordered_tail[k].id<< std::endl;
       }
 
 
       //Filling density into tracker particle list (densityevo)
-      disk[j].rho = mtot/vol;
+      tail[j].rho = mtot/vol;
 
       /*
       if (t!=0)
       {
-        disk[j].u = 1 + .5*disk[j].v.norm()*disk[j].v.norm() - MASS/disk[j].r.norm();
+        tail[j].u = 1 + .5*tail[j].v.norm()*tail[j].v.norm() - MASS/tail[j].r.norm();
       }
       */
 
-      save(disk[j], densitydat, t);
+      save(tail[j], densitydat, t);
       densitydat.close();
       ++i;
     }
@@ -518,12 +519,12 @@ void density_calculation(std::vector<Particle> & disk, const double & t)
 
 
 //OUTPUTS RATE OF COMPUTATION PLOT
-void computation_time(std::string str, clock_t initial, std::ofstream & outf)
+void computation_time(std::string str, clock_t initial, std::ofstream & outf, double t)
 {
   clock_t current = clock();
   float seconds = (float(current-initial))/(CLOCKS_PER_SEC);
-  std::cout << "Percent complete: "<< str <<", Minutes elapsed: "<< seconds/60 << "\r"<<std::flush;
-  outf << str <<" "<<(float(current-initial))/(CLOCKS_PER_SEC)<<std::endl;
+  std::cout << "Percent complete: "<< str <<", Minutes elapsed: "<< seconds/60 <<" Simulation time (s): "<< t/2.27e5<< "\r"<<std::flush;
+  outf << str <<" "<<(float(current-initial))/(CLOCKS_PER_SEC) <<std::endl;
 }
 
 
@@ -545,26 +546,35 @@ const double B_r = 8;       //in MeV, binding energy for r-process nuclei
 const double diff = 1.293;  //in MeV, this is neutron proton rest mass difference
 const double neutrino_f = .5;        //fraction of energy lost to neutrinos
 const double E_r = (1-neutrino_f)*(B_r - X_s*B_s - X_n*diff);
-const double total_E   = E_r * 1.602e-13;    //joules
-const double proton_mass = 1.673e-27; //atomic mass unit to kg
+const double total_E   = E_r * 1.602e-13;    //joules per nucleon
+const double proton_mass = 1.673e-24; //atomic mass unit to grams
 
 //possibly variable in future. 2.03e5 code time in a second.
-const double t_heat = 0.7/4.927e-6;  //total heating time in code time
+const double t_heat = 0.7*2.27e5;  //total heating time in code time
 //const double time_step = 2;
-const double heat_rate = total_E/t_heat;    //in Joules, heat per nucleon over this time step
+const double heat_rate = total_E/t_heat;
 
 //convert back to cgs (c=1)
-const double delta_u = heat_rate/proton_mass/(3e8*3e8);
+const double delta_u = heat_rate/proton_mass/1e-3/(3e8*3e8);
+
+const double erg_to_joule = 1e-7;   //1erg = 1e-7 watt
+const double sec_to_codetime = 2.27e5;  //1s = 2.27e5 codetime units
+
 
 
 void add_heat(Particle & p, double dt, double t)
 {
   //QUESTION: how is 3MeV determined to be per nucleon? how does the equation work?
+  double t_calc;
+  if (p.tapo !=0 && t<1) t_calc = (2.27e5+t-p.tapo+dt/2)/2.27e5;
+  else t_calc = (t+dt/2)/2.27e5;
+  //heating rate at a point halfway in the interval [t, t+dt], in MeV
+  double specific_e_dot = 2e18*erg_to_joule*1e3*pow(  (.5 - 1/pi*atan((t_calc-1.3)/.11)  ),1.3)/(2.27e5*3e8*3e8);
+  //above is code energy per kg per codetime.
 
-  if (t < t_heat)
-  {
-    p.v = (sqrt(p.v.norm()*p.v.norm() + 2*delta_u*dt) )/p.v.norm()*p.v;
-  }
+
+
+  p.v = sqrt(p.v.norm()*p.v.norm() + 2*specific_e_dot*dt)/p.v.norm()*p.v;
 
 }
 
@@ -582,29 +592,28 @@ void add_heat(Particle & p, double dt, double t)
 
 
 
-void generate_smaller_disk(std::vector<Particle> & disk, double t, double dt, std::ofstream & tofile)
+void generate_smaller_tail(std::vector<Particle> & tail, double t, double dt, std::ofstream & tofile)
 {
-  std::vector<Particle> next_disk;
+  std::vector<Particle> next_tail;
   int deleted=0;
 
-  for (size_t n = 0; n < disk.size(); n++)
+  for (size_t n = 0; n < tail.size(); n++)
   {
-    //enter if CURRENT radial velocity is positive
-    if (check(disk[n].r, disk[n].v) == 1)
+    //enter if CURRENTLY MOVING OUTWARDS (radial velocity is positive)
+    if (check(tail[n].r, tail[n].v) == 1)
     {
 
-      //enter this case only if velocity ever used to be negative
-      if (disk[n].vcheck == 0)
+      //USED TO MOVE INWARDS (enter this case only if velocity ever used to be negative)
+      if (tail[n].vcheck == 0)
       {
         
-        if (disk[n].dflag==1)
+        if (tail[n].dflag==1)
         {
           Dcount = Dcount-1;
           std::cout << "Initially tracked "<< i_D_count <<" particles. Now down to "<< Dcount << std::endl; 
-          disk[n].dflag=0;     
+          tail[n].dflag=0;     
         }
-        save(disk[n], tofile, t);                   //save particle data to file, along with time halted
-
+        save(tail[n], tofile, t);                   //save particle data to file, along with time halted
 
         ++deleted;
         //std::cout << "p" << n+1 << " was deleted" << std::endl;
@@ -617,18 +626,36 @@ void generate_smaller_disk(std::vector<Particle> & disk, double t, double dt, st
         
         if (Heat ==1)
         {
-          add_heat(disk[n], dt, t);
+          add_heat(tail[n], dt, t);
         }
-        RKupdate(disk[n], dt);
-        next_disk.push_back(disk[n]);
+        RKupdate(tail[n], dt);
+        next_tail.push_back(tail[n]);
       }
-    } 
-    //ENTER IF particle is MOVING INWARDS
+    }
+
+
+
+    //enter if particle is MOVING INWARDS
     else
     {
-      disk[n].vcheck = 0;       //affirms that the particle _has_ in the past had negative radial velocity
-      RKupdate(disk[n], dt);    //update for the case of falling particle
-      next_disk.push_back(disk[n]);
+      //save fallback time for each particle. 
+
+      /*
+      //enter if JUST REACHED APOAPSE and beginning to move inwards
+      if (tail[n].vcheck == 1 && t>2.27e5)
+      {
+
+        if (t<1)
+        {
+          tail[n].tapo = t;
+          add_heat(tail[n], dt, t);
+        }
+      }
+      */
+
+      tail[n].vcheck = 0;       //affirms that the particle _has_ in the past had negative radial velocity
+      RKupdate(tail[n], dt);    //update for the case of falling particle
+      next_tail.push_back(tail[n]);
     }
    //} //end the stopping condition loop
 
@@ -637,7 +664,7 @@ void generate_smaller_disk(std::vector<Particle> & disk, double t, double dt, st
 
 
   //CONSIDER SWITCHING TO LIST, AND STOP USING STD::VECTOR
-  disk = next_disk;
+  tail = next_tail;
   //std::cout << deleted<< " particles were deleted." << std::endl;
 }
 
@@ -654,29 +681,29 @@ void generate_smaller_disk(std::vector<Particle> & disk, double t, double dt, st
 
 
 
-void delete_particles_same_disk(std::vector<Particle> & disk, double t, double dt, std::ofstream & tofile)
+void delete_particles_same_tail(std::vector<Particle> & tail, double t, double dt, std::ofstream & tofile)
 {
 //begin looping over all particles
-  for (size_t n = 0; n < disk.size(); n++)
+  for (size_t n = 0; n < tail.size(); n++)
   {
     int deleted=0;
     //enter if CURRENT radial velocity is positive
-    if (check(disk[n].r, disk[n].v) == 1)
+    if (check(tail[n].r, tail[n].v) == 1)
     {
 
       //enter this case only if velocity ever used to be negative
-      if (disk[n].vcheck == 0)
+      if (tail[n].vcheck == 0)
       {
         
-        if (disk[n].dflag==1)
+        if (tail[n].dflag==1)
         {
           Dcount = Dcount-1;
-          disk[n].dflag=0;              
+          tail[n].dflag=0;              
         }
-        save(disk[n], tofile, t);                   //save particle data to file, along with time halted
+        save(tail[n], tofile, t);                   //save particle data to file, along with time halted
 
           
-        disk.erase(disk.begin() + n);   //when a particle is deleted
+        tail.erase(tail.begin() + n);   //when a particle is deleted
         n = n - 1;               //subtract 1 from the index, so the next particle isn't skipped
 
         ++deleted;
@@ -689,17 +716,17 @@ void delete_particles_same_disk(std::vector<Particle> & disk, double t, double d
         //heat
         if (Heat ==1)
         {
-          add_heat(disk[n], dt, t);
+          add_heat(tail[n], dt, t);
         }
-        RKupdate(disk[n], dt);
+        RKupdate(tail[n], dt);
 
       }
     } 
     //ENTER IF particle is MOVING INWARDS
     else
     {
-      disk[n].vcheck = 0;       //affirms that the particle _has_ in the past had negative radial velocity
-      RKupdate(disk[n], dt);    //update for the case of falling particle
+      tail[n].vcheck = 0;       //affirms that the particle _has_ in the past had negative radial velocity
+      RKupdate(tail[n], dt);    //update for the case of falling particle
 
     }
    //} //end the stopping condition loop
@@ -725,26 +752,25 @@ void delete_particles_same_disk(std::vector<Particle> & disk, double t, double d
 
 
 
-std::vector<Particle> autevolve(std::vector<Particle> & disk, const double & dt, std::ofstream & tofile, const double T = 2e5)
+std::vector<Particle> autevolve(std::vector<Particle> & tail, const double & dt, std::ofstream & tofile, const double T = 2e5)
 { 
 
   //CANNOT CALCULATE DENSITY WHILE
   //LOOPING THROUGH ALL PARTICLES UPDATING POSITIONS, SINCE SOME PARTICLES WOULD BE UPDATED WHILE OTHERS WOULDN'T BE
   
   //SO MUST CALCULATE DENSITIES, THEN UPDATE POSITIONS
-  //LOOP THROUGH DISK. IF DCHECK =1, THEN CALCULATE DENSITY.
+  //LOOP THROUGH tail. IF DCHECK =1, THEN CALCULATE DENSITY.
   double t = 0;
+
   std::ofstream comp_time("comp_time.dat");
 
   std::cout << "Finding particles to track..." << std::endl;
-  set_dflags(disk);
+  set_dflags(tail);
 
   std::cout << "Calculating initial densities..." << std::endl;
-  density_calculation(disk, t);
+  density_calculation(tail, t);
 
 
-  t = dt;
-  int i = 1;
   std::cout << "Number of total steps ~ " << T/dt << std::endl;  
   std::cout << "Commencing evolution... " << std::endl;
   clock_t initial = clock();
@@ -755,47 +781,46 @@ std::vector<Particle> autevolve(std::vector<Particle> & disk, const double & dt,
 
     //PROGRESS BAR  ///////////////////////////
     std::string percent_complete = std::to_string(t/T*100);
-    computation_time(percent_complete, initial, comp_time);
+    computation_time(percent_complete, initial, comp_time, t);
     ///////////////////////////////////////////
 
 
 
     //UPDATE ENERGIES
-    for (int i = 0; i < disk.size(); ++i)
+    for (int j = 0; j < int(tail.size()); ++j)
     {
-      disk[j].u = 1 + .5*disk[j].v.norm()*disk[j].v.norm() - MASS/disk[j].r.norm();
+      tail[j].u = 1 + .5*tail[j].v.norm()*tail[j].v.norm() - MASS/tail[j].r.norm();
     }
     
 
     //faster if lots of particles being deleted
     if (t<1.6e4)
     {
-      generate_smaller_disk(disk, t, dt, tofile);
+      generate_smaller_tail(tail, t, dt, tofile);
     }
     //faster if not many particles being deleted
     else
     {
-      delete_particles_same_disk(disk, t, dt, tofile);
+      delete_particles_same_tail(tail, t, dt, tofile);
     }
 
 
 
-
+    
 
     // DENSITY CALCULATION before evolving particles ///////////
-    int mod = dt*10;
-    if (    (i % mod == 0) && (nnn<= int(disk.size()))    )
+    int mod = dt*1e3;
+    if (    (int(t/dt) % mod == 0) && (nnn<= int(tail.size()))    )
     {
 
-      density_calculation(disk, t);
+      density_calculation(tail, t+dt);
     }
     ////////////////////////////////////////////////////////////
-
+    
 
     //CONSIDER SWITCHING TO LIST, AND STOP USING STD::VECTOR
 
     t = t + dt;
-    i = i + 1;
     //std::cout << deleted<< " particles were deleted." << std::endl;
 
 
@@ -806,7 +831,7 @@ std::vector<Particle> autevolve(std::vector<Particle> & disk, const double & dt,
   std::cout << std::endl;
   std::cout << "Complete. Minutes elapsed: "<<(final - initial)/(CLOCKS_PER_SEC)/60. << std::endl;
 
-  return disk;
+  return tail;
 
 }
 /////////////////////////////-----------------------------------------------------------------------
@@ -824,15 +849,15 @@ std::vector<Particle> autevolve(std::vector<Particle> & disk, const double & dt,
 
 //This function TAKES OUTPUT LIST OF ONLY UNBOUND PARTICLES and calculates phi, cos(theta). Also prints masses and ye;
     //Creates output file to be used in solidangle.py
-void solidangle(std::vector<Particle> & disk, std::ofstream & outf)
+void solidangle(std::vector<Particle> & tail, std::ofstream & outf)
 {
 
-  for (size_t n = 0; n < disk.size(); n++)
+  for (size_t n = 0; n < tail.size(); n++)
   {
-    outf << disk[n].m << " ";
-    disk[n].print_position(outf);
-    disk[n].print_velocity(outf);
-    disk[n].print_quantities(outf);
+    outf << tail[n].m << " ";
+    tail[n].print_position(outf);
+    tail[n].print_velocity(outf);
+    tail[n].print_quantities(outf);
     outf << std::endl;
   }
 }
@@ -846,7 +871,7 @@ void solidangle(std::vector<Particle> & disk, std::ofstream & outf)
 
 
 //This will evolve all particles for a predetermined time, N*dt
-void manevolve(std::vector<Particle> disk, double dt, double T = 2e5){
+void manevolve(std::vector<Particle> tail, double dt, double T = 2e5){
 
   double t = 0;
   int   i = 0;
@@ -854,23 +879,23 @@ void manevolve(std::vector<Particle> disk, double dt, double T = 2e5){
   {    //begin time loop
 
     //std::cout <<"t"<< i << "\t";
-    //disk[0].preport();              //report just the first particle at each time
+    //tail[0].preport();              //report just the first particle at each time
 
 
 //begin looping over all particles for given time
-    for (size_t n = 0; n < disk.size(); n++)
+    for (size_t n = 0; n < tail.size(); n++)
     {
-      RKupdate(disk[n], dt);    //update particle
+      RKupdate(tail[n], dt);    //update particle
     }
 
-  t = t + dt;
-  i = i + 1;
+    t = t + dt;
+    i = i + 1;
   }
 }
 
 //write code to track 
 
-//Evolve should take in dt, disk vectorlist
+//Evolve should take in dt, tail vectorlist
 //RKupdate should just take in one particle, dt
 
 
@@ -957,8 +982,8 @@ int main() {
 
 
 
-  std::vector<Particle> disk;
-  disk  = read(particledat);
+  std::vector<Particle> tail;
+  tail  = read(particledat);
 
 ///////////////////
 
@@ -968,15 +993,15 @@ int main() {
   
 
   std::vector<Particle> ejecta;
-  ejecta = autevolve(disk, dt, fallbackdat, EVOLTIME);
+  ejecta = autevolve(tail, dt, fallbackdat, EVOLTIME);
   solidangle(ejecta, solidangledat);
 
 
   std::vector<Particle> densities;
   densities = ejecta;
 //  densities = densevolve(particledat, densities, dt, EVOLTIME);
-  //manevolve(disk, dt);
-  //std::cout << newdisk[0].m << ", " << newdisk[0].r << ", " << newdisk[0].v << std::endl;
+  //manevolve(tail, dt);
+  //std::cout << newtail[0].m << ", " << newtail[0].r << ", " << newtail[0].v << std::endl;
 
 
   return 0;
