@@ -54,7 +54,8 @@ int domain_restricted;
 
 
 
-int Heat;    //if 1, add heating
+double Heat;    //if 1, add heating
+double T_HEAT;    //if 1, add heating
 
 
 
@@ -100,6 +101,8 @@ public:
   int id;             //initial index of particle in original list
   bool dflag   = 0;   //(default is 0) set to 1 for particles that we track densities for
   double tapo  = 0;
+  double dt    = 2;
+  double t     = 0;
   
 
   Particle (double m_, Eigen::Vector3d r_, Eigen::Vector3d v_) :    //constructor for object of Particle class
@@ -239,7 +242,7 @@ std::vector <Particle> read(std::ifstream & particledat)
 
   int i = 0;
 
-  std::ofstream corrected("corrected.dat");
+  //std::ofstream corrected("corrected.dat");
   while (!particledat.eof())
   {
         //peek at first character.   
@@ -248,6 +251,7 @@ std::vector <Particle> read(std::ifstream & particledat)
     else
     {
       particledat >> m >> x >> y >> z >> vx >> vy >> vz >> u >> rho >> temp >> ye >> e;
+      
       //RESTRICTION ON DOMAIN
       //If domain_restricted=0, enter block.
       //If domain is restricted, but particle lies in subdomain, enter block. Else do nothing.
@@ -341,10 +345,10 @@ Eigen::Vector3d fieldon(const Particle & p)
 
 
 //This updates 1 particle via RK 4th order method
-void RKupdate(Particle & p, const double & dt)
+void RKupdate(Particle & p)
 { 
                                               //after a time step of 'dt'
-
+  double dt = p.dt;
   Eigen::Vector3d dr, dv;   //declare changes in position/velocity. To be added to present state variables
   Particle p_ = p;
 
@@ -375,6 +379,7 @@ void RKupdate(Particle & p, const double & dt)
   //update this info back into particle info:
   p.r = p.r + dr; 
   p.v = p.v + dv;
+  p.t = p.t + dt;
 
 }
 
@@ -403,6 +408,7 @@ void set_dflags(std::vector<Particle> & tail)
       unbound.push_back(tail[j]);
     }
   }
+  if (Dcount> int(unbound.size() ) ) Dcount= unbound.size();
   std::cout << unbound.size() << " particles meet tracer requirement. Choosing "<< Dcount<<" particles." << std::endl;
 
   int j = 0;  //number of tracers found
@@ -433,7 +439,7 @@ void set_dflags(std::vector<Particle> & tail)
 //we want it to only calculate density if it is also a tracer particle
 
 
-void density_calculation(std::vector<Particle> & tail, const double & t)
+void density_calculation(std::vector<Particle> & tail)
 {
   std::string densityfile;
   std::ofstream densitydat(densityfile);
@@ -466,17 +472,17 @@ void density_calculation(std::vector<Particle> & tail, const double & t)
         return compdist(part1, part2, center);
       };
 
-
+      double NNN = fmin(nnn, tail.size());
       //making copy of tail and sorting that, so we can maintain order in original tail
       std::vector<Particle> ordered_tail = tail;
-      std::partial_sort(ordered_tail.begin(), ordered_tail.begin()+nnn, ordered_tail.end(), compare);
+      std::partial_sort(ordered_tail.begin(), ordered_tail.begin()+NNN, ordered_tail.end(), compare);
       //std::cout << "after sort, last tail id" << tail[tail.size()-1].id << std::endl;
 
       //std::cout << "after sort id" << tail[0].id << " "<<(densityevo[denseinc].r- tail[0].r).norm() << std::endl;
       //std::cout << "after sort id" << tail[nnn-1].id << " "<<(densityevo[denseinc].r- tail[nnn-1].r).norm() << std::endl;
 
       //Calculating radius of sphere
-      double rad = (tail[j].r- ordered_tail[nnn-1].r ).norm(); //distance of particle farthest away from center
+      double rad = (tail[j].r- ordered_tail[NNN-1].r ).norm(); //distance of particle farthest away from center
 
 
       //Volume of sphere
@@ -485,7 +491,7 @@ void density_calculation(std::vector<Particle> & tail, const double & t)
 
       //Calculating total mass in sphere
       double mtot = 0;
-      for (int k = 0; k < nnn-1; k++)
+      for (int k = 0; k < NNN-1; k++)
       {
         mtot = mtot + ordered_tail[k].m;
         //std::cout << "id: " << ordered_tail[k].id<< std::endl;
@@ -502,7 +508,7 @@ void density_calculation(std::vector<Particle> & tail, const double & t)
       }
       */
 
-      save(tail[j], densitydat, t);
+      save(tail[j], densitydat, tail[j].t);
       densitydat.close();
       ++i;
     }
@@ -523,7 +529,7 @@ void computation_time(std::string str, clock_t initial, std::ofstream & outf, do
 {
   clock_t current = clock();
   float seconds = (float(current-initial))/(CLOCKS_PER_SEC);
-  std::cout << "Percent complete: "<< str <<", Minutes elapsed: "<< seconds/60 <<" Simulation time (s): "<< t/2.27e5<< "\r"<<std::flush;
+  std::cout << "Percent complete: "<< str <<", Minutes elapsed: "<< seconds/60 <<" Simulation time (s): "<< t/2.27e5<< "____ \r"<<std::flush;
   outf << str <<" "<<(float(current-initial))/(CLOCKS_PER_SEC) <<std::endl;
 }
 
@@ -558,23 +564,23 @@ const double heat_rate = total_E/t_heat;
 const double delta_u = heat_rate/proton_mass/1e-3/(3e8*3e8);
 
 const double erg_to_joule = 1e-7;   //1erg = 1e-7 watt
-const double sec_to_codetime = 2.27e5;  //1s = 2.27e5 codetime units
+const double one_sec = 2.27e5;  //1s = 2.27e5 codetime units
 
 
 
-void add_heat(Particle & p, double dt, double t)
+void add_heat(Particle & p)
 {
   //QUESTION: how is 3MeV determined to be per nucleon? how does the equation work?
   double t_calc;
-  if (p.tapo !=0 && t<1) t_calc = (2.27e5+t-p.tapo+dt/2)/2.27e5;
-  else t_calc = (t+dt/2)/2.27e5;
+  if (p.tapo !=0 && p.t<2.27e5) t_calc = (2.27e5+p.t-p.tapo+p.dt/2)/2.27e5;
+  else t_calc = (p.t+p.dt/2)/2.27e5;
   //heating rate at a point halfway in the interval [t, t+dt], in MeV
-  double specific_e_dot = 2e18*erg_to_joule*1e3*pow(  (.5 - 1/pi*atan((t_calc-1.3)/.11)  ),1.3)/(2.27e5*3e8*3e8);
+  double specific_e_dot = (Heat/2.6)*2e18*erg_to_joule*1e3*pow(  (.5 - 1/pi*atan((t_calc-1.3-T_HEAT)/.11)  ),1.3)/(2.27e5*3e8*3e8);
   //above is code energy per kg per codetime.
 
 
 
-  p.v = sqrt(p.v.norm()*p.v.norm() + 2*specific_e_dot*dt)/p.v.norm()*p.v;
+  p.v = sqrt(p.v.norm()*p.v.norm() + 2*specific_e_dot*p.dt)/p.v.norm()*p.v;
 
 }
 
@@ -592,80 +598,129 @@ void add_heat(Particle & p, double dt, double t)
 
 
 
-void generate_smaller_tail(std::vector<Particle> & tail, double t, double dt, std::ofstream & tofile)
+
+bool generate_smaller_tail(std::vector<Particle> & tail, double tol, double dcalc, std::ofstream & tofile)
 {
   std::vector<Particle> next_tail;
-  int deleted=0;
 
+  //number of deleted particles
+  int deleted  = 0;
+
+  //set to 1 if all particles are caught up to same time and ready to calculate densities. else, 0.
+  bool advance_densities = 1;
   for (size_t n = 0; n < tail.size(); n++)
   {
-    //enter if CURRENTLY MOVING OUTWARDS (radial velocity is positive)
-    if (check(tail[n].r, tail[n].v) == 1)
+
+    if (tail[n].t < dcalc)          //if particle not reached density checkpoint,
     {
 
-      //USED TO MOVE INWARDS (enter this case only if velocity ever used to be negative)
-      if (tail[n].vcheck == 0)
+
+      //CALCULATE TIME STEP
+      tail[n].dt = tol*2*M_PI*pow(tail[n].r.norm(), 1.5)/sqrt(MASS);  //calculate minimum time step for given tolerance
+      if (tail[n].dt + tail[n].t > dcalc)                                 //if time step + current time exceeds final time,
       {
-        
-        if (tail[n].dflag==1)
-        {
-          Dcount = Dcount-1;
-          std::cout << "Initially tracked "<< i_D_count <<" particles. Now down to "<< Dcount << std::endl; 
-          tail[n].dflag=0;     
-        }
-        save(tail[n], tofile, t);                   //save particle data to file, along with time halted
-
-        ++deleted;
-        //std::cout << "p" << n+1 << " was deleted" << std::endl;
+        tail[n].dt = dcalc- tail[n].t;                                    //force time step to be such that particle ends at final time
+        //std::cout << "tail[n].dt: "<< tail[n].dt << std::endl;
       }
-
-      //enter if within range but moving outwards, keep updating
       else
       {
-        //heat
-        
-        if (Heat ==1)
-        {
-          add_heat(tail[n], dt, t);
-        }
-        RKupdate(tail[n], dt);
-        next_tail.push_back(tail[n]);
+        advance_densities = 0;                               //else, still more evolution to go.
+
       }
-    }
+      ///////////////////////
 
 
 
-    //enter if particle is MOVING INWARDS
-    else
-    {
-      //save fallback time for each particle. 
 
-      /*
-      //enter if JUST REACHED APOAPSE and beginning to move inwards
-      if (tail[n].vcheck == 1 && t>2.27e5)
+      if (check(tail[n].r, tail[n].v) == 1)       //currently moving outwards
       {
 
-        if (t<1)
+        if (tail[n].vcheck == 0)                  //used to move inwards
         {
-          tail[n].tapo = t;
-          add_heat(tail[n], dt, t);
+          
+          if (tail[n].dflag == 1)                 //if density tracker is about to be deleted,
+          {
+            Dcount = Dcount-1;
+            std::cout << "Initially tracked "<< i_D_count <<" particles. Now down to "<< Dcount << std::endl; 
+            tail[n].dflag=0;     
+          }
+          save(tail[n], tofile, tail[n].t);       //save particle data to file, along with time halted
+          
+          ++deleted;
+        }
+
+        else                                      // if moving outwards, keep updating
+        {
+          //heat
+          add_heat(tail[n], Heat);
+          RKupdate(tail[n]);
+          next_tail.push_back(tail[n]);
         }
       }
-      */
 
-      tail[n].vcheck = 0;       //affirms that the particle _has_ in the past had negative radial velocity
-      RKupdate(tail[n], dt);    //update for the case of falling particle
+
+
+
+      else //if particle is MOVING INWARDS,
+      {
+        //save fallback time for each particle. 
+
+        /*
+        //enter if JUST REACHED APOAPSE and beginning to move inwards
+        if (tail[n].vcheck == 1 && t>2.27e5)
+        {
+
+          if (t<1)
+          {
+            tail[n].tapo = t;
+            add_heat(tail[n], dt, t);
+          }
+        }
+        */
+
+        tail[n].vcheck = 0;       //affirms that the particle _has_ in the past had negative radial velocity
+        RKupdate(tail[n]);    //update for the case of falling particle
+        next_tail.push_back(tail[n]);
+      }
+      //end the stopping condition loop
+    }
+
+
+    else
+    {
       next_tail.push_back(tail[n]);
     }
-   //} //end the stopping condition loop
-
 
   }   //end looping over particles
 
 
-  //CONSIDER SWITCHING TO LIST, AND STOP USING STD::VECTOR
+
+
+  /*
+  double MIN = tail[0].dt;
+  double MAX = tail[0].dt;  
+
+  for (size_t n = 0; n < tail.size()-1; n++)
+  {
+
+    if (tail[n+1].dt <MIN)
+    {
+      MIN = tail[n+1].dt;
+    }
+    if (tail[n+1].dt >MAX)
+    {
+      MAX = tail[n+1].dt;
+    }
+     
+  }
+  */
+
+
   tail = next_tail;
-  //std::cout << deleted<< " particles were deleted." << std::endl;
+
+
+  //std::cout << "MIN: " <<MIN<< " MAX: "<< MAX << std::endl;
+  return advance_densities;
 }
 
 
@@ -681,59 +736,103 @@ void generate_smaller_tail(std::vector<Particle> & tail, double t, double dt, st
 
 
 
-void delete_particles_same_tail(std::vector<Particle> & tail, double t, double dt, std::ofstream & tofile)
+
+bool delete_particles(std::vector<Particle> & tail, double tol, double dcalc, std::ofstream & tofile)
 {
-//begin looping over all particles
+
+  //number of deleted particles
+  int deleted  = 0;
+
+  //set to 1 if all particles are caught up to same time and ready to calculate densities. else, 0.
+  bool advance_densities = 1;
+
   for (size_t n = 0; n < tail.size(); n++)
   {
-    int deleted=0;
-    //enter if CURRENT radial velocity is positive
-    if (check(tail[n].r, tail[n].v) == 1)
+    if (tail[n].t < dcalc)
     {
 
-      //enter this case only if velocity ever used to be negative
-      if (tail[n].vcheck == 0)
+      tail[n].dt = tol*2*M_PI*pow(tail[n].r.norm(), 1.5)/sqrt(MASS);  //calculate minimum time step for given tolerance
+      if (tail[n].dt + tail[n].t > dcalc)                                 //if time step + current time exceeds final time,
       {
-        
-        if (tail[n].dflag==1)
-        {
-          Dcount = Dcount-1;
-          tail[n].dflag=0;              
-        }
-        save(tail[n], tofile, t);                   //save particle data to file, along with time halted
-
-          
-        tail.erase(tail.begin() + n);   //when a particle is deleted
-        n = n - 1;               //subtract 1 from the index, so the next particle isn't skipped
-
-        ++deleted;
-        //std::cout << "p" << n+1 << " was deleted" << std::endl;
+        tail[n].dt = dcalc- tail[n].t;                                    //force time step to be such that particle ends at final time
+        //std::cout << "tail[n].dt: "<< tail[n].dt << std::endl;
       }
-
-      //enter if within range but moving outwards, keep updating
       else
       {
-        //heat
-        if (Heat ==1)
-        {
-          add_heat(tail[n], dt, t);
-        }
-        RKupdate(tail[n], dt);
+        advance_densities = 0;                               //else, still more evolution to go.
 
       }
-    } 
-    //ENTER IF particle is MOVING INWARDS
-    else
-    {
-      tail[n].vcheck = 0;       //affirms that the particle _has_ in the past had negative radial velocity
-      RKupdate(tail[n], dt);    //update for the case of falling particle
 
+
+
+
+
+  //enter if CURRENTLY MOVING OUTWARDS (radial velocity is positive)
+      if (check(tail[n].r, tail[n].v) == 1)
+      {
+
+        //USED TO MOVE INWARDS (enter this case only if velocity ever used to be negative)
+        if (tail[n].vcheck == 0)
+        {
+          
+          if (tail[n].dflag == 1)
+          {
+            Dcount = Dcount-1;
+            std::cout << "Initially tracked "<< i_D_count <<" particles. Now down to "<< Dcount << std::endl; 
+            tail[n].dflag=0;     
+          }
+          save(tail[n], tofile, tail[n].t);                   //save particle data to file, along with time halted
+          
+          tail.erase(tail.begin() + n);   //when a particle is deleted
+          n = n - 1; 
+          ++deleted;
+          //std::cout << "p" << n+1 << " was deleted" << std::endl;
+        }
+
+        //enter if within range but moving outwards, keep updating
+        else
+        {
+          //heat
+          add_heat(tail[n], Heat);
+          RKupdate(tail[n]);
+          //next_tail.push_back(tail[n]);
+        }
+      }
+
+
+
+      //enter if particle is MOVING INWARDS
+      else
+      {
+        //save fallback time for each particle. 
+
+        /*
+        //enter if JUST REACHED APOAPSE and beginning to move inwards
+        if (tail[n].vcheck == 1 && t>2.27e5)
+        {
+
+          if (t<1)
+          {
+            tail[n].tapo = t;
+            add_heat(tail[n], dt, t);
+          }
+        }
+        */
+
+        tail[n].vcheck = 0;       //affirms that the particle _has_ in the past had negative radial velocity
+        RKupdate(tail[n]);    //update for the case of falling particle
+        //next_tail.push_back(tail[n]);
+      }
+      //end the stopping condition loop
     }
-   //} //end the stopping condition loop
+
+  }   //end looping over particles
 
 
-  }//end loop over particles
 
+
+  //std::cout << deleted<< " particles were deleted." << std::endl;
+  return advance_densities;
 }
 
 
@@ -750,9 +849,7 @@ void delete_particles_same_tail(std::vector<Particle> & tail, double t, double d
 
 
 
-
-
-std::vector<Particle> autevolve(std::vector<Particle> & tail, const double & dt, std::ofstream & tofile, const double T = 2e5)
+std::vector<Particle> autevolve(std::vector<Particle> & tail, const double & tol, std::ofstream & tofile, const double T = 2e5)
 { 
 
   //CANNOT CALCULATE DENSITY WHILE
@@ -760,7 +857,20 @@ std::vector<Particle> autevolve(std::vector<Particle> & tail, const double & dt,
   
   //SO MUST CALCULATE DENSITIES, THEN UPDATE POSITIONS
   //LOOP THROUGH tail. IF DCHECK =1, THEN CALCULATE DENSITY.
-  double t = 0;
+
+
+  double NUM = 100.;      //so we calculate densities/energies etc. 100 times
+  std::vector<double> dtime;
+  int exp=0;
+  while (pow(T, double(exp)/NUM) <= T)
+  {
+
+    dtime.push_back(pow(T, double(exp)/NUM));
+    //std::cout << "dtime["<< exp <<"] = "<< dtime[exp]<< std::endl;
+    ++exp;
+  }
+
+
 
   std::ofstream comp_time("comp_time.dat");
 
@@ -768,21 +878,25 @@ std::vector<Particle> autevolve(std::vector<Particle> & tail, const double & dt,
   set_dflags(tail);
 
   std::cout << "Calculating initial densities..." << std::endl;
-  density_calculation(tail, t);
+  density_calculation(tail);
 
 
-  std::cout << "Number of total steps ~ " << T/dt << std::endl;  
+  std::cout << "Number of total density updates: " << dtime.size() << std::endl;  
   std::cout << "Commencing evolution... " << std::endl;
   clock_t initial = clock();
 
-  while (t < T)
+
+
+
+
+  double t;
+
+  exp = 0;   //index for density calculations
+  while (exp < int(dtime.size()) )
   {
+    t = dtime[exp];   //catching all particles up to this time
 
-
-    //PROGRESS BAR  ///////////////////////////
-    std::string percent_complete = std::to_string(t/T*100);
-    computation_time(percent_complete, initial, comp_time, t);
-    ///////////////////////////////////////////
+  
 
 
 
@@ -793,39 +907,56 @@ std::vector<Particle> autevolve(std::vector<Particle> & tail, const double & dt,
     }
     
 
+
+    bool advance = generate_smaller_tail(tail, tol, t, tofile);
+    
+    if (advance==1)
+    {
+      density_calculation(tail);
+      ++exp;
+
+
+          //PROGRESS BAR  ///////////////////////////
+      std::string percent_complete = std::to_string(t/T*100);
+      computation_time(percent_complete, initial, comp_time, t);
+      ///////////////////////////////////////////
+
+
+    }
+    /*
+    std::cout << "exp: " << exp <<std::endl;
+    std::cout << "tail.size(): " << tail.size() <<std::endl;
+    */
+
     //faster if lots of particles being deleted
+    /*
     if (t<1.6e4)
     {
       generate_smaller_tail(tail, t, dt, tofile);
     }
     //faster if not many particles being deleted
+    
+
     else
     {
       delete_particles_same_tail(tail, t, dt, tofile);
     }
+    */
 
 
 
-    
-
-    // DENSITY CALCULATION before evolving particles ///////////
-    int mod = dt*1e3;
-    if (    (int(t/dt) % mod == 0) && (nnn<= int(tail.size()))    )
-    {
-
-      density_calculation(tail, t+dt);
-    }
-    ////////////////////////////////////////////////////////////
     
 
     //CONSIDER SWITCHING TO LIST, AND STOP USING STD::VECTOR
 
-    t = t + dt;
     //std::cout << deleted<< " particles were deleted." << std::endl;
 
 
 
   }     //finish time whileloop
+
+
+
 
   clock_t final = clock();
   std::cout << std::endl;
@@ -885,7 +1016,7 @@ void manevolve(std::vector<Particle> tail, double dt, double T = 2e5){
 //begin looping over all particles for given time
     for (size_t n = 0; n < tail.size(); n++)
     {
-      RKupdate(tail[n], dt);    //update particle
+      RKupdate(tail[n]);    //update particle
     }
 
     t = t + dt;
@@ -909,10 +1040,10 @@ void manevolve(std::vector<Particle> tail, double dt, double T = 2e5){
 int main() {
 
 
-  double dt;
 
+  double TOL;
 
-  std::string dt_;
+  std::string TOL_;
   std::string MASS_;
   std::string particledat_;
   std::string domain_restricted_;
@@ -928,8 +1059,8 @@ int main() {
     if (inputfile.peek() == '#') inputfile.ignore(256, '\n');  //does the line start with "#"? If so, ignore until new line
       
     else { //reading bhsim.input and assigning each of its entries to appropriate objects
-      std::getline(inputfile, dt_);
-      dt = std::stod(dt_);
+      std::getline(inputfile, TOL_);
+      TOL = std::stod(TOL_);
 
       std::getline(inputfile, MASS_);
       MASS = std::stod(MASS_);
@@ -955,7 +1086,7 @@ int main() {
   std::cout << "Confirm the following:" << std::endl;
   std::cout << "Input file: "<< inputfile_name << std::endl;  
   std::cout << "Reading from: "<< particledat_<< std::endl;
-  std::cout << "Time step: "<< dt<< std::endl;
+  std::cout << "Tolerance: "<< TOL<< std::endl;
   std::cout << "Mass of black hole: "<< MASS<< std::endl;
   std::cout << "Is domain restricted? 1 = yes, 0 = no: "<< domain_restricted<< std::endl;
   std::cout << "Number of nearest neighbors per tracker particle: "<< nnn<< std::endl;
@@ -990,16 +1121,12 @@ int main() {
   fallbackdat << "# m << x << y << z << vx << vy << vz << u << rho << temp << ye << e << t" << std::endl;
   solidangledat << "# m << x << y << z << vx << vy << vz << u << rho << temp << ye << e" << std::endl;
 
-  
 
   std::vector<Particle> ejecta;
-  ejecta = autevolve(tail, dt, fallbackdat, EVOLTIME);
+  ejecta = autevolve(tail, TOL, fallbackdat, EVOLTIME);
   solidangle(ejecta, solidangledat);
 
 
-  std::vector<Particle> densities;
-  densities = ejecta;
-//  densities = densevolve(particledat, densities, dt, EVOLTIME);
   //manevolve(tail, dt);
   //std::cout << newtail[0].m << ", " << newtail[0].r << ", " << newtail[0].v << std::endl;
 
