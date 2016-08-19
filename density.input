@@ -1,0 +1,14 @@
+# 1 - This is tolerance (.002 translates to initial step size of dt =1, for distance of ~50 km)
+# 2 - Mass of black hole
+# 3 - where particles are initially read from
+# 4 - set to 1 if you want to restrict domain. In this case, MUST recompile bhsim
+# 5 - number of nearest neighbors
+# 6 - TOTAL TIME EVOLVED - Total time T = 2e5. We need 1 MORE input for initial start time
+# 7 - Is heating on? 2.6 if full heating, 0 if no heating.
+0.004
+6.11
+FullParticleFile_M5_S7.dat
+0
+20
+136e5
+0
