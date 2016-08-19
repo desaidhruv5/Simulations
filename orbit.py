@@ -60,33 +60,35 @@ def set_variables(DATA):
   #mass = [line[0]*1.99e33 for line in DATA]  #grams
   mass = [line[0] for line in DATA] #grams
 
-  return mass, r, v
+  return mass, r, v, energy
 
 
 
 
 
 
-def keep_bound_particles(mass_, r_, v_):
+def keep_bound_particles(mass_, r_, v_, energy_):
 
   print "Keeping only bound particles..."
   mass             = []
 
   r                = []
   v                = []
-  energy = (1+.5*la.norm(v_,axis=1)**2-MASS/la.norm(r_,axis=1)).tolist()
+  #energy = (1+.5*la.norm(v_,axis=1)**2-MASS/la.norm(r_,axis=1)).tolist()
+  energy =[]
   #print vr.shape
   #print mat(radial_velocity[:,0]).T.shape
 
   for j in range(len(mass_)):
-    if  energy[j]<1:
+    if  energy_[j]<1:
       mass.append(mass_[j])
       r.append(r_[j])
       v.append(v_[j])
+      energy.append(energy_[j])
 
 
   print "Bound particles found."
-  return mass, r, v
+  return mass, r, v, energy
 
 #############################################################
 
@@ -123,12 +125,13 @@ def follow_single_particle(r,v):
 
 
   factor = np.sqrt((1+ecc)/(1-ecc))
+
   E = 2*np.arctan2(np.sin(true_anomaly/2), factor*np.cos(true_anomaly/2)  )
 
-
+  atan_.append(E)
 
   if E <0:
-    E = E + 2*pi
+    E = E + 2*2*pi
     print "An E value is negative. Corrected."
 
 
@@ -206,31 +209,52 @@ MASS = 6.0552018     #solar mass in units of solar mass
 G = 6.67408e-11       #Gravitational constant in SI
 mu = MASS*G*1.989e30  #used for orbit calculations
 NAME = "M5_S9"
-TIMEAFTERMERGER= 346 + 15*2e5
+TIMEAFTERMERGER= 346 + 30*2e5
 
 
 filename = check_file_existence("solidangle.dat")
 data = extract(filename)
-m_, r_, v_ = set_variables(data)
+m_, r_, v_, u_ = set_variables(data)
 
-#m, r, v  = keep_bound_particles(m_, r_, v_)
+#m, r, v, u  = keep_bound_particles(m_, r_, v_, u_)
 
 
 m, r, v  = m_, r_, v_
 
-
+atan_=[]
 t_ = generate_fallback_times(r,v)   #in seconds
 
 
 t=[]
 matter = []
-
+r__ =[]
+v__ =[]
+atan =[]
 for j in range(len(t_)):
   if t_[j]==t_[j]:
     t.append(t_[j])
     matter.append(m[j])
+    r__.append(r[j])
+    v__.append(v[j])
+    atan.append(atan_[j])
 
+"""
+r__ = 1.48e3*np.array(r__)
+v__ = 3e8*np.array(v__)
+dist  = la.norm(r__, axis = 1)
+speed = la.norm(v__, axis = 1)
+a  = 1/(2/dist - (speed**2)/mu)
+n  = np.sqrt(mu/a**3)
+print 'min orbital period: ' , min(2*pi/n)
 
+print "max ", max(t)
+print "min ", min(t)
+print "median ", np.median(t)
+
+print "max atan ", max(atan)
+print "min atan ", min(atan)
+print "median atan", np.median(atan)
+"""
 
 
 t = [x +TIMEAFTERMERGER/2.27e5 for x in t]

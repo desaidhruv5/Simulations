@@ -23,34 +23,34 @@ def extract(filename):
 
 def set_variables(DATA):
 
-	"""  
+  """  
   #position components
   #in km
   x = [line[1] for line in DATA]
   y = [line[2] for line in DATA]
   z = [line[3] for line in DATA]
   r = [ [x[k], y[k], z[k]] for k in range(len(x))] 
-	
+
   #radial vector
   #radius = [np.sqrt(x[k]**2 + y[k]**2 + z[k]**2) for k in range(len(x))]
-	
+
   #velocity components
   vx = [line[4] for line in DATA]
   vy = [line[5] for line in DATA]
   vz = [line[6] for line in DATA]
   v = [[vx[i], vy[i], vz[i]] for i in range(len(vx))  ]
-	"""
-	energy = [line[7] for line in DATA]		#actually specific energy. units of c^2
+  """
+  energy = [line[7] for line in DATA]		#actually specific energy. units of c^2
 
 
-  t = [line[12] for line in DATA]	
-  time = [x +TIMEAFTERMERGER for x in time]
-	t = [x/2.27e5 for x in t]
-	
-	#mass = [line[0]*1.99e33 for line in DATA]	#grams
-	mass = [line[0] for line in DATA]	#grams
+  t = [line[12] for line in DATA]
+  t = [x +TIMEAFTERMERGER for x in t]
+  t = [x/2.27e5 for x in t]
 
-	return mass, t, energy
+  #mass = [line[0]*1.99e33 for line in DATA]	#grams
+  mass = [line[0] for line in DATA]	#grams
+
+  return mass, t, energy
 
 
 
@@ -78,14 +78,14 @@ for i in range(len(B)-1):
 T= 10**np.array(T)
 """
 
-def calc_fallback(mass, time):
+def calc_fallback(mass, time, res = 200):
   
-
+  print "calculating fallback rate..."
 
   log_t_start = np.log10(time[0])
   log_t_end = np.log10(time[-1])
 
-  B = np.logspace(log_t_start,log_t_end, num=81)
+  B = np.logspace(log_t_start,log_t_end, num=res)
   dm, bins, ignored = plt.hist(time, bins = B, weights = mass)
   plt.close()
   T  = []
@@ -97,9 +97,40 @@ def calc_fallback(mass, time):
 
   Mrate = np.array(dm)/np.array(dt)
 
-  return T, Mrate
+  return Mrate, T
 
 ####################################################################
+
+
+def plot_fallback(mdot, T):
+  plt.xscale('log')
+  plt.yscale('log')
+  x=[1*10**(-1.7), 1*10**(-.5)]
+  y=[ 1 , 1e-2]
+  plt.plot(x, y, label = r'expected $t^{-5/3}$ slope')
+  plt.plot(T, mdot, label = "Simulated fallback rate")
+  plt.xlabel('time [seconds]')
+  plt.ylabel(r'Fallback rate [$M_{\odot}/s$]')
+
+
+def output_data(FILENAME, x, mass):
+  #np.savetxt(FILENAME, np.transpose([mass, x,y]), fmt='%1.6g')
+
+  file = open(FILENAME, "w")
+  for i in range(len(x)):
+    file.write("%1.6e " %mass[i]) #bin total mass
+    file.write("%1.6e " %x[i]) #logr coordinates
+    file.write("\n")
+
+
+  ##USER EDIT############
+  plt.title(r'%s: Mass fallback rate' %NAME)
+  #'''
+  plt.legend()
+  plt.savefig('fallback.png')
+  plt.show()  
+#############################################################################
+
 
 
 
@@ -109,7 +140,7 @@ def calc_fallback(mass, time):
 
 
 #USER INPUT##################################################################
-M = 6.055
+NAME = "M5_S7"
 TIMEAFTERMERGER = 346
 
 
@@ -117,31 +148,33 @@ data = extract("fallback.dat")
 m, t, u = set_variables(data)
 
 
-T, Mrate = calc_fallback(t, m)
-
-plt.plot(T, Mrate, label = "Simulation fallback rate")
+Mrate, T = calc_fallback(m, t)
 
 
+plot_fallback(Mrate, T)
 
-plt.xscale('log')
-plt.yscale('log')
-
-x=[1*10**(-1.7), 1*10**(-.5)]
-y=[ 1 , 1e-2]
-plt.plot(x, y, label = r'expected $t^{-5/3}$ slope')
-#''' This is mass rate plot:
-
-plt.xlim(10*t[0],10*t[-1])
-plt.xlabel('time [seconds]')
-plt.ylabel(r'Fallback rate [$M_{\odot}/s$]')
+output_data('%s_binned_fallback.dat' %NAME, T, Mrate)
 
 
-##USER EDIT############
-plt.title(r'M5_S9: Mass fallback rate')
-#'''
-plt.legend()
 
 
-plt.show()
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 

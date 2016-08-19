@@ -42,6 +42,7 @@ def set_variables(file):
   vx = [line[4] for line in FILE]
   vy = [line[5] for line in FILE]
   vz = [line[6] for line in FILE]
+  ye = [line[10] for line in FILE]
 
   v = [[vx[i], vy[i], vz[i]] for i in range(len(vx))  ]
   #radial velocity
@@ -59,11 +60,11 @@ def set_variables(file):
 
 
 
-  return radius, speed, energy, polar_angle , mass
+  return radius, speed, energy, polar_angle , ye, mass
 
 #-----------------------------------------------
 
-def remove_bound_particles(radius_, radial_velocity_, energy_, polar_angle_ , mass_):
+def remove_bound_particles(radius_, radial_velocity_, energy_, polar_angle_ , ye_, mass_):
   radial_velocity  = []
   polar_angle = []
   energy   = []
@@ -71,6 +72,7 @@ def remove_bound_particles(radius_, radial_velocity_, energy_, polar_angle_ , ma
   uncounted_mass=[]
   false_energy=[]
   radius = []
+  ye = []
   for j in range(len(vr_)):
     if  energy_[j]>1:
       mass.append(mass_[j])
@@ -78,6 +80,7 @@ def remove_bound_particles(radius_, radial_velocity_, energy_, polar_angle_ , ma
       polar_angle.append(polar_angle_[j])
       energy.append(energy_[j])
       radius.append(radius_[j])
+      ye.append(ye_[j])
 
       if radial_velocity_[j] < 0:
         false_energy.append(mass_[j])
@@ -89,7 +92,7 @@ def remove_bound_particles(radius_, radial_velocity_, energy_, polar_angle_ , ma
     print "fraction of mass left out: ", sum(uncounted_mass)/sum(mass)
     print "fraction of mass with u>1, vr<0 (falsely marked): ", sum(false_energy)/sum(mass)
     """
-  return radius, radial_velocity, energy, polar_angle, mass
+  return radius, radial_velocity, energy, polar_angle, ye, mass
 
 #---------------------------------------------
 
@@ -146,7 +149,9 @@ print count, " slices plotted."
 def predict_velocities_from_energies(u, r):
   predicted_velocities = []
   for i in range(len(u)):
-    predicted_velocities.append(   np.sqrt( (u[i]-1+MASS/r[i])*2  )   )
+    #predicted_velocities.append(   np.sqrt( (u[i]-1+MASS/r[i])*2  )   )
+    predicted_velocities.append(   np.sqrt( (u[i]-1)*2  )   )
+
     #predicted_velocities[i] = 3e5*predicted_velocities[i]
   return predicted_velocities
 
@@ -154,12 +159,17 @@ def predict_velocities_from_energies(u, r):
 
 
 #bins masses according respective radial velocities
-def plot_velocity_spread(velocities, masses, num_of_bins, label):
-  hist, bin_edges, ignored = plt.hist(velocities, weights=masses, bins = num_of_bins, alpha=.5, label=label)
+def plot_spread(velocities, masses, num_of_bins, title, label):
+  counts, xedges, ignored = plt.hist(velocities, weights=masses, bins = num_of_bins, alpha=.5, label=label)
   plt.title(r'%s: Spread of ejecta velocities' %NAME)
   plt.xlabel(r'Velocities $[km/s]$')
   plt.ylabel(r'Mass $[g]$')
-  plt.savefig('%s_velocity_spread.png' %NAME)
+  plt.savefig('%s_%s_spread.png' %(NAME, title) )
+  x = [(xedges[i+1]+xedges[i])/2 for i in range(len(xedges)-1)]
+  plt.legend()
+  plt.show()
+  return x, counts
+
   return hist, bin_edges
 
 def plot_2dhist(phi, vr, m, num_of_bins):
@@ -207,6 +217,16 @@ def plot_avg_velocity_vs_polar_angle(velocity, mass, polar_angle, num_of_bins, c
   plt.title(r'%s: Average ejecta velocities over polar angle' %NAME)
   plt.savefig('%s_avg_ejecta_velocity_over_phi.png' %NAME)
 
+
+
+def output_data(FILENAME, x, mass):
+  #np.savetxt(FILENAME, np.transpose([mass, x,y]), fmt='%1.6g')
+
+  file = open(FILENAME, "w")
+  for i in range(len(x)):
+    file.write("%1.6e " %mass[i]) #bin total mass
+    file.write("%1.6e " %x[i]) #logr coordinates
+    file.write("\n")
 ##############################################################################################################
 ##############################################################################################################
 ####################################                                    #####################################
@@ -219,15 +239,16 @@ def plot_avg_velocity_vs_polar_angle(velocity, mass, polar_angle, num_of_bins, c
 
 #USER INPUT#############
 B=50      #number of bins
-NAME= "M5_S9"
+NAME= "M5_S7"
+MASS = 6.11
 ########EDIT LINE IMMEDIATELY BELOW THIS
 
 FILE = extract("solidangle.dat")
 
-r_, vr_, u_, phi_ , m_ = set_variables(FILE)
+r_, vr_, u_, phi_ , ye_, m_ = set_variables(FILE)
 
 
-r, vr, u, phi, m = remove_bound_particles(r_, vr_, u_, phi_ , m_)
+r, vr, u, phi, ye, m = remove_bound_particles(r_, vr_, u_, phi_ , ye_, m_)
 
 
 
@@ -240,13 +261,21 @@ plt.yscale('log')"""
 pv = predict_velocities_from_energies(u ,r)
 
 B= np.linspace(min(vr+pv), max(vr+pv), 101)
-counts1, bins = plot_velocity_spread(vr, m, B, "actual")
-counts2, bins = plot_velocity_spread(pv, m, B, "predicted by initial energies")
+#counts1, bins = plot_spread(vr, m, B, "actual")
+binv, binmass = plot_spread(pv, m, B, 'velocity', "predicted by initial energies")
+output_data('%s_binned_terminal_v.dat' %NAME, binv, binmass)
+
+B =50
+plt.yscale('log')
+
+binye, binmass = plot_spread(ye, m, B,'ye', "ye distribution")
+output_data('%s_binned_ye.dat' %NAME, binye, binmass)
+
 #plt.close()
 
 
 
-bins = [((bins[i+1]-bins[i])/2).tolist() for i in range(len(bins.tolist())-1)]
+#bins = [((bins[i+1]-bins[i])/2).tolist() for i in range(len(bins.tolist())-1)]
 
 #plt.plot(bins, (np.array(counts1)-np.array(counts2)).tolist() )#, bins = len(bins)+1)
 
@@ -270,9 +299,6 @@ plt.hist(velocities, weights=masses, bins = num_of_bins, alpha=.5, label=label)
 
 #plot_2dhist(phi, vr, m, num_of_bins = 150)
 
-
-plt.legend()
-plt.show()
 
 
 # remove saving feature from code, see if that speeds up evolution

@@ -87,7 +87,7 @@ def remove_bound_particles(r_, v_, energy_, mass_):
   false_energy     = []
   r                = []
   v                = []
-  energy_ = (1+.5*la.norm(v_,axis=1)**2-MASS/la.norm(r_,axis=1)).tolist()
+  #energy_ = (1+.5*la.norm(v_,axis=1)**2-MASS/la.norm(r_,axis=1)).tolist()
 
   for j in range(len(mass_)):
     if  energy_[j]>1:
@@ -100,7 +100,7 @@ def remove_bound_particles(r_, v_, energy_, mass_):
 
   #print "should have been deleted: ", count
   #print "New radial_velocity.shape, ", vr.shape
-  print "should agree with mass length: ", len(mass)
+  #print "should agree with mass length: ", len(mass)
     
 
   """
@@ -117,7 +117,7 @@ def pick_most_massive_marticles(velocity, mass):
   pass
   MED = np.percentile(mass, 90)
   m   = []
-  v = []
+  v   = []
   #print vr.shape
   #print mat(radial_velocity[:,0]).T.shape
   print "90th percentile mass: ", MED
@@ -129,7 +129,7 @@ def pick_most_massive_marticles(velocity, mass):
   return v, m
 
 
-def calculate_c_U(velocity, mass):
+def calculate_U(velocity, mass):
 
 
   v, m = pick_most_massive_marticles(velocity, mass)
@@ -147,9 +147,10 @@ def calculate_c_U(velocity, mass):
 
   print "commence svd..."
   U, s, V = svd(M)
-  c=mat(c).T
+  print "svd complete."
+  
 
-  return c, U
+  return U
   #return c, k
 
 
@@ -158,14 +159,14 @@ def transform_coordinates(velocity, mass):
 
 
   v = np.array(velocity)  #Nx3 array
-  print "wvshape ", v.shape
   weighted_v = v.T*mass   #3xN array
   offset = mat(weighted_v.sum(axis=1)).T/sum(mass)
-  print "actual offset: ", offset
-  c,U = calculate_c_U(velocity, mass)
-  #M = mat(mass*v.T - c)
-  M = mat(v.T)# - c)
+  U = calculate_U(velocity, mass)
+
+  M = mat(v.T)
   new_v = (U.T*M).T
+  print "U"
+  print U
 
   return new_v
 
@@ -201,17 +202,23 @@ def rotate(a, v):
 
 def plot_v_map(phi, v, m, num_of_bins):
   speed = la.norm(v, axis=1)
-  hist2d(phi, speed, bins= num_of_bins, weights=m, norm=LogNorm())
+  counts, xedges, yedges, Image = hist2d(phi, speed, bins= num_of_bins, weights=m, norm=LogNorm())
   plt.colorbar().set_label(label=r'Mass [$g$]')
   plt.xlabel(r'$\phi$ [angle from $x$-axis]')
   plt.ylabel(r'Speed $[km/s]$')
   plt.title(r'%s: Distribution of mass over velocity & polar angle' %NAME)
   plt.savefig('%s_mass_distribution_vr_phi.png' %NAME)
-  plt.show()
+  #hist, bin_edges, ignored = plt.hist(
+  plt.show()  
+
+  x = [(xedges[i+1]+xedges[i])/2 for i in range(len(xedges)-1)]
+  y = [(yedges[i+1]+yedges[i])/2 for i in range(len(yedges)-1)]
+  return x, y, counts
+
 
 def plot_solidangle(phi, cos, m, num_of_bins):
 
-  hist2d(phi, cos, bins= num_of_bins, weights=m, norm=LogNorm())
+  counts, xedges, yedges, Image = hist2d(phi, cos, bins= num_of_bins, weights=m, norm=LogNorm())
   plt.colorbar().set_label(label=r'Mass [$g$]')
   plt.xlabel(r'$\phi$ (angle from $x$-axis in radians)')
   plt.ylabel(r'$\cos(\theta)$ ($\theta$ is angle from $z$ axis)')
@@ -219,14 +226,29 @@ def plot_solidangle(phi, cos, m, num_of_bins):
   plt.savefig('%s_solidangle.png' %NAME)
   plt.show()
 
+  x = [(xedges[i+1]+xedges[i])/2 for i in range(len(xedges)-1)]
+  y = [(yedges[i+1]+yedges[i])/2 for i in range(len(yedges)-1)]
+  return x, y, counts
+
+
+def output_data(FILENAME, x, y, mass):
+  #np.savetxt(FILENAME, np.transpose([mass, x,y]), fmt='%1.6g')
+
+  file = open(FILENAME, "w")
+  for i in range(len(x)):
+    for j in range(len(y)):
+      file.write("%1.6e " %mass[i][j]) #bin total mass
+      file.write("%1.6e " %x[i]) #logr coordinates
+      file.write("%1.6e " %y[j]) #r/z coordinates
+      file.write("\n")
 
 
 #---------------------------------------------
 
 #USER INPUT#############
 B=150      #number of bins
-NAME= "M5_S9"
-MASS = 6.055
+NAME= "M5_S7"
+MASS = 6.11
 ########EDIT LINE IMMEDIATELY BELOW THIS
 
 
@@ -249,12 +271,17 @@ v1= transform_coordinates(v, m)
 
 
 
-v1 = rotate(np.pi, v1)
+#v1 = rotate(np.pi, v1)
 phi, cos = find_angles(v1)
 
 print "Behold!"
-plot_solidangle(phi, cos, m, B)
-plot_v_map(phi, v1, m, B)
+binphi, bincos, binmass = plot_solidangle(phi, cos, m, B)
+output_data('%s_binned_solidangle.dat' %NAME, binphi, bincos, binmass)
+
+binphi,  binv1, binmass = plot_v_map(phi, v1, m, B)
+output_data('%s_binned_velocity_map.dat' %NAME, binphi, binv1, binmass)
+
+
 
 #scaling, so that we get mass/steradian,   for each square
 

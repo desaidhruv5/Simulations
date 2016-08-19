@@ -130,7 +130,8 @@ time, computation = set_variables(FILE)
 plt.plot(time, computation, label = "actual computation time")
 
 
-index = -3
+#look back 10 steps to approximate slope
+index = -30
 slope= (computation[-1]-computation[index])/(time[-1]-time[index])
 intercept = computation[-1]-slope*time[-1]
 
@@ -142,7 +143,7 @@ hours = int(floor(time[-1]/3600))
 #plt.plot(X,Y, label = "Predicted time to completion")
 
 print "Time taken so far: ",hours, ":", int((time[-1]%3600)/60), ":", int(time[-1]%60)
-print "Predicted time to completion: ", final_time/3600, " hours."
+print "Predicted total time for simulation: ", final_time/3600, " hours."
 
 
 plt.xlabel(' time [seconds]')
@@ -152,7 +153,7 @@ plt.title(r'Computation time')
 #plt.xscale('log')
 #plt.yscale('log')
 
-plt.legend(loc = 'upper right')
+plt.legend(loc = 'upper left')
 plt.show()
 
 #figure out amount of time it takes to loop through N particles using method 1 and method 2.

@@ -87,7 +87,7 @@ def remove_bound_particles(r_, v_, energy_, mass_):
   r                = []
   v                = []
   boundmass        = []
-  energy_ = (1+.5*la.norm(v_,axis=1)**2-MASS/la.norm(r_,axis=1)).tolist()
+  #energy_ = (1+.5*la.norm(v_,axis=1)**2-MASS/la.norm(r_,axis=1)).tolist()
   #print vr.shape
   #print mat(radial_velocity[:,0]).T.shape
 

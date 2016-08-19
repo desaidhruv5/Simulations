@@ -44,7 +44,7 @@ def set_variables(file):
   vz = [line[6] for line in FILE]
   v = [[vx[i], vy[i], vz[i]] for i in range(len(vx))  ]
 
-  t = [line[12]/2e5 for line in FILE]
+  t = [line[12]/2.27e5 for line in FILE]
   
   #energy
   energy   = [line[7] for line in FILE]      #actually specific energy. units of c^2
@@ -150,7 +150,7 @@ print count, " slices plotted."
 
 #USER INPUT#############
 B=50      #number of bins
-NAME= "M5_S9"
+NAME= "M7_S9_I20"
 ########EDIT LINE IMMEDIATELY BELOW THIS
 
 filename = []
@@ -159,7 +159,7 @@ for i in os.listdir(os.getcwd()):
     filename.append(i)
 
 colors = iter(cm.rainbow(np.linspace(0, 1, len(filename))))
-MASS= 6.0552018
+MASS= 8.14
 
 
 DIFFS = []
@@ -195,7 +195,7 @@ for i in range(len(filename)):
     DIFFS.append(dist_diff)
     #B = 10**(B)
 
-    points = 5
+    points = 2
     pS  = [predicted_speed[x-points] for x in range(points)]
     S  = [speed[x-points] for x in range(points)]
     T  = [t[x-points] for x in range(points)]
@@ -218,7 +218,7 @@ for i in range(len(filename)):
     #plt.xlim(.8, 1)
     #plt.xlim(t[-points], t[4-points])
     #plt.plot(t,speed_diff, alpha = .5)#, label= "dist differences")
-    plt.plot(t,speed, alpha = .5)#, label= "computed distance")
+    plt.plot(t,delta_u, alpha = .5)#, label= "computed distance")
     #plt.plot(t,dist, alpha = .5, label= "computed distance")
     plt.title(" Evolution of unbound particles")
     plt.xlabel("Time (s)")
