@@ -36,13 +36,13 @@ solid_angle     << m << x << y << z << vx << vy << vz << u << rho << temp << ye 
 
 
 //MASS OF BLACK HOLE
-double MASS;
-const double G = 1;
-const double pi = 4*atan(1);
-int nnn;// = 20; //Number of nearest neighbors
+double MASS=1.e200;
+const double G = 1.;
+const double pi = 4.*atan(1);
+int nnn=-1;// = 20; //Number of nearest neighbors
 
 
-double EVOLTIME;
+double EVOLTIME=-10000.;
 
 int i_D_count = 20;
 int Dcount = i_D_count; //Dcount is number of unbound particles being tracked
@@ -50,12 +50,12 @@ int Dcount = i_D_count; //Dcount is number of unbound particles being tracked
 
 //If set to 1, domain will be restricted according to formula in read() function.
 //If set to 0, bhsim will incorporate all particles.
-int domain_restricted;
+int domain_restricted=-1;
 
 
 
-double Heat;    //if 1, add heating
-double T_HEAT;    //if 1, add heating
+double Heat=1.e300;    //if 1, add heating
+double T_Heat=-1.e300;    //if 1, add heating
 
 
 
@@ -551,36 +551,47 @@ const double B_s = 8.7;     //in MeV, binding energy for seed nuclei
 const double B_r = 8;       //in MeV, binding energy for r-process nuclei
 const double diff = 1.293;  //in MeV, this is neutron proton rest mass difference
 const double neutrino_f = .5;        //fraction of energy lost to neutrinos
-const double E_r = (1-neutrino_f)*(B_r - X_s*B_s - X_n*diff);
-const double total_E   = E_r * 1.602e-13;    //joules per nucleon
+
 const double proton_mass = 1.673e-24; //atomic mass unit to grams
 
 //possibly variable in future. 2.03e5 code time in a second.
-const double t_heat = 0.7*2.27e5;  //total heating time in code time
-//const double time_step = 2;
-const double heat_rate = total_E/t_heat;
-
-//convert back to cgs (c=1)
-const double delta_u = heat_rate/proton_mass/1e-3/(3e8*3e8);
-
-const double erg_to_joule = 1e-7;   //1erg = 1e-7 watt
-const double one_sec = 2.27e5;  //1s = 2.27e5 codetime units
-
+const double erg_in_joules = 1e-7;   //1erg = 1e-7 joule
 
 
 void add_heat(Particle & p)
 {
-  //QUESTION: how is 3MeV determined to be per nucleon? how does the equation work?
+  //const double E_r = (1-neutrino_f)*(B_r - X_s*B_s - X_n*diff);
+
+  const double E_r = Heat;
+  const double total_E   = E_r * 1.602e-13;    //joules per nucleon
+  const double one_sec = 2.27e5;  //1s = 2.27e5 codetime units
+  double t_tot = T_Heat*one_sec;  //total heating time in code time
+  //const double time_step = 2;
+  double heat_rate = total_E/t_tot;
+
+  //convert back to cgs (c=1)
+  double delta_u = heat_rate/proton_mass/1e-3/(3e8*3e8);
+  /*
   double t_calc;
-  if (p.tapo !=0 && p.t<2.27e5) t_calc = (2.27e5+p.t-p.tapo+p.dt/2)/2.27e5;
-  else t_calc = (p.t+p.dt/2)/2.27e5;
+  if (p.tapo !=0 && p.t< one_sec) t_calc = (one_sec+p.t-p.tapo+p.dt/2)/one_sec;
+  else t_calc = (p.t+p.dt/2)/one_sec;
   //heating rate at a point halfway in the interval [t, t+dt], in MeV
-  double specific_e_dot = (Heat/2.6)*2e18*erg_to_joule*1e3*pow(  (.5 - 1/pi*atan((t_calc-1.3-T_HEAT)/.11)  ),1.3)/(2.27e5*3e8*3e8);
+  //double specific_e_dot = (Heat/2.6)*2e18*erg_in_joules*1e3*pow(  (.5 - 1/pi*atan((t_calc-1.3)/.11)  ),1.3)/(one_sec*3e8*3e8);
   //above is code energy per kg per codetime.
 
-
-
   p.v = sqrt(p.v.norm()*p.v.norm() + 2*specific_e_dot*p.dt)/p.v.norm()*p.v;
+  */
+
+
+  if (p.t < t_tot)
+  {
+    //std::cout << "Delta_u: "<<delta_u <<std::endl;
+    double utest = p.u;
+    p.v = (sqrt(p.v.norm()*p.v.norm() + 2*delta_u*p.dt) )/p.v.norm()*p.v;
+
+
+  }
+
 
 }
 
@@ -631,7 +642,6 @@ bool generate_smaller_tail(std::vector<Particle> & tail, double tol, double dcal
 
 
 
-
       if (check(tail[n].r, tail[n].v) == 1)       //currently moving outwards
       {
 
@@ -652,7 +662,7 @@ bool generate_smaller_tail(std::vector<Particle> & tail, double tol, double dcal
         else                                      // if moving outwards, keep updating
         {
           //heat
-          add_heat(tail[n], Heat);
+          add_heat(tail[n]);
           RKupdate(tail[n]);
           next_tail.push_back(tail[n]);
         }
@@ -673,7 +683,7 @@ bool generate_smaller_tail(std::vector<Particle> & tail, double tol, double dcal
           if (t<1)
           {
             tail[n].tapo = t;
-            add_heat(tail[n], dt, t);
+            add_heat(tail[n]);
           }
         }
         */
@@ -793,7 +803,7 @@ bool delete_particles(std::vector<Particle> & tail, double tol, double dcalc, st
         else
         {
           //heat
-          add_heat(tail[n], Heat);
+          add_heat(tail[n]);
           RKupdate(tail[n]);
           //next_tail.push_back(tail[n]);
         }
@@ -861,14 +871,25 @@ std::vector<Particle> autevolve(std::vector<Particle> & tail, const double & tol
 
   double NUM = 100.;      //so we calculate densities/energies etc. 100 times
   std::vector<double> dtime;
-  int exp=0;
+  int exp = 0;
   while (pow(T, double(exp)/NUM) <= T)
   {
 
     dtime.push_back(pow(T, double(exp)/NUM));
     //std::cout << "dtime["<< exp <<"] = "<< dtime[exp]<< std::endl;
+
+
     ++exp;
   }
+
+
+  int h_index = 0;
+  while (dtime[h_index]<T_Heat*2.27e5)
+  {
+    ++h_index;
+  }
+  dtime.insert(dtime.begin()+h_index, T_Heat*2.27e5);
+
 
 
 
@@ -1039,8 +1060,6 @@ void manevolve(std::vector<Particle> tail, double dt, double T = 2e5){
 
 int main() {
 
-
-
   double TOL;
 
   std::string TOL_;
@@ -1050,6 +1069,7 @@ int main() {
   std::string nnn_;
   std::string EVOLTIME_;
   std::string Heat_;
+  std::string T_Heat_;
 
   std::string inputfile_name = "density.input";
   std::ifstream inputfile(inputfile_name);
@@ -1077,8 +1097,10 @@ int main() {
       EVOLTIME = std::stod(EVOLTIME_);
 
       std::getline(inputfile, Heat_);
-      Heat = std::stoi(Heat_);            
+      Heat = std::stod(Heat_);            
 
+      std::getline(inputfile, T_Heat_);
+      T_Heat = std::stod(T_Heat_);
 
     }
   }
@@ -1093,9 +1115,13 @@ int main() {
   std::cout << "Total evolution time: "<< EVOLTIME << std::endl;
 
 
-  if (Heat==1) std::cout << "Heating is on." << std::endl;
-  else std::cout << "Heating is off." << std::endl;
-
+  std::cout << "Heating: " <<Heat << " MeV/nucleon."<< std::endl;
+  std::cout<< "T_Heat: "<<T_Heat<<std::endl;
+  /*
+  std::cout<< "one_sec: "<<one_sec<<std::endl;
+  std::cout<< "T_Heat*one_sec: "<<T_Heat*one_sec<<std::endl;
+  std::cout<< "t_tot: "<<t_tot<<std::endl;
+  */
 
 
   std::ifstream particledat(particledat_);
