@@ -3,12 +3,14 @@
 # 3 - where particles are initially read from
 # 4 - set to 1 if you want to restrict domain. In this case, MUST recompile bhsim
 # 5 - number of nearest neighbors
-# 6 - TOTAL TIME EVOLVED - Total time T = 2e5. We need 1 MORE input for initial start time
-# 7 - Is heating on? 2.6 if full heating, 0 if no heating.
+# 6 - TOTAL TIME EVOLVED - Total time T = 2e5 (code units). We need 1 MORE input for initial start time
+# 7 - Is heating on? 2.6 (MeV) if full heating, 0 if no heating.
+# 8 - interval of time for which heat is on (seconds). Typically ~1 second
 0.004
 6.11
 FullParticleFile_M5_S7.dat
 0
 20
 136e5
-0
+3
+1

@@ -6,6 +6,8 @@
 #include "Eigen_lib/Eigen/Dense"
 #include <cstdio>
 #include <time.h>
+#include <sstream>
+#include <dirent.h>
 
 //////////////////////////////////////////////////////////////////*
 
@@ -57,7 +59,30 @@ int domain_restricted=-1;
 double Heat=1.e300;    //if 1, add heating
 double T_Heat=-1.e300;    //if 1, add heating
 
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//Function Declarations
+std::vector<std::string> split(std::string str, char delimiter);
+std::vector<std::string> generate_files(std::string path, std::string ending);
+class Heat_profile;
+class Particle;
+void read_heating(std::ifstream & heatingdat, std::vector<double> * time, std::vector<double> * dt, std::vector<double> * temp, 
+                  std::vector<double> * dens, std::vector<double> * entr, std::vector<double> * heat_rate, std::vector<double> * ye);
+void set_heat_profile(std::string dir, std::vector<Heat_profile> * all_heat_profiles);
+void assign_heat_profile_to_particle(std::vector<Particle> * particle_list, 
+                                     std::vector<Heat_profile> * all_heat_profiles);
+void add_skynet_heat(Particle *p, Heat_profile *h);
 
+
+
+
+
+
+
+
+
+
+
+//~~~~~~~~~~~~~~~~~~~~~~~~~Function definitions~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 
 //checks direction of particle velocity
@@ -103,6 +128,8 @@ public:
   double tapo  = 0;
   double dt    = 2;
   double t     = 0;
+  int heat_prof = 0;
+  int heat_prof_i = 0;
   
 
   Particle (double m_, Eigen::Vector3d r_, Eigen::Vector3d v_) :    //constructor for object of Particle class
@@ -130,6 +157,50 @@ public:
 
 };
 ///////////////////////////////////////////
+
+
+
+
+class Heat_profile
+{      //this is a vector of particles
+public:
+  std::vector<double>  time;
+  std::vector<double>  dt;
+  std::vector<double>  temp;
+  std::vector<double>  dens;
+  std::vector<double>  entr;
+  std::vector<double>  heat_rate;
+  std::vector<double>  ye;
+
+  
+
+  Heat_profile (std::vector<double>  time_, std::vector<double>  dt_, std::vector<double>  temp_, std::vector<double>  dens_,
+                std::vector<double>  entr_, std::vector<double>  heat_rate_, std::vector<double>  ye_) :    //constructor for object of Particle class
+               time(time_),  dt(dt_),  temp(temp_),  dens(dens_),  entr(entr_),   heat_rate(heat_rate_),   ye(ye_) {}
+
+
+/*
+  void
+  print_position(std::ofstream & outf)
+  {                              //report particle info
+    outf << r[0] << " " << r[1]<< " "<< r[2] << " ";
+  }
+  
+  void
+  print_velocity(std::ofstream & outf)
+  {                              //report particle info
+    outf << v[0] << " " << v[1]<< " "<< v[2] << " ";
+  }
+
+  void
+  print_quantities(std::ofstream & outf)
+  {
+    outf << u << " " << rho << " " << temp << " " << ye << " " << e << " ";
+  }*/
+
+};
+
+
 
 
 
@@ -188,6 +259,38 @@ void correct_velocity(Particle & p)//, std::ofstream & outf)
 
 
 
+void read_heating(std::ifstream & heatingdat, std::vector<double> * time, std::vector<double> * dt, std::vector<double> * temp, 
+                  std::vector<double> * dens, std::vector<double> * entr, std::vector<double> * heat_rate, std::vector<double> * ye){
+  int j = 0;
+  std::string data;
+  std::string line;
+  j=0;
+  while (std::getline(heatingdat, data)) {
+    std::vector<std::string> line = split(data, ' ');
+    if (line.size()==0) break;
+    char tab2[1024];
+    strncpy(tab2, line[0].c_str(), sizeof(tab2));
+    tab2[sizeof(tab2) - 1] = 0;
+    //printf("size: %d\n", strncmp(tab2,"#",1) );
+    if (strncmp(tab2,"#",1)==0 || line.size() == 0); 
+    else
+    {
+      //printf("test: %s, %s, %s, %s\n", line[0].c_str(),line[1].c_str(),line[2].c_str(),line[3].c_str());
+      time->push_back( std::stod(line[0])  );
+      (*dt).push_back  ( std::stod(line[1])  );
+      (*temp).push_back( std::stod(line[2])  );
+      (*dens).push_back( std::stod(line[3])  );
+      (*entr).push_back( std::stod(line[4])  );
+      (*heat_rate).push_back( std::stod(line[5])  );
+      (*ye).push_back(   std::stod(line[6])  );
+      //printf("time[%i]: %e\n", j, (*time)[j]);
+      ++j;
+
+    }
+
+  }
+
+}
 
 
 
@@ -206,10 +309,29 @@ void correct_velocity(Particle & p)//, std::ofstream & outf)
 
 
 
+std::string convert_next_line_to_string(std::ifstream & inputfile)
+{
+  std::string line;
+  std::getline(inputfile, line);
+  return line;
+}
 
+std::vector<std::string> split(std::string str, char delimiter)
+{
+  std::vector<std::string> internal;
+  std::stringstream ss(str); // Turn the string into a stream.
+  std::string tok;
 
+  
+  while(getline(ss, tok, delimiter)) {
 
-
+    if (tok != "" ) {
+      internal.push_back(tok);
+    }
+  }
+  
+  return internal;
+}
 
 
 
@@ -233,7 +355,7 @@ std::vector <Particle> read(std::ifstream & particledat)
   //particle id - initial index in the particle list, which will stick with particle throughout evolution
   int id;
   //here we define what each element on each line represents
-  double m, x, y, z, vx, vy, vz, u, rho, temp, ye, e;
+  double m, x, y, z, vx, vy, vz, u, rho;
 
   Eigen::Vector3d r;
   Eigen::Vector3d v;
@@ -243,24 +365,51 @@ std::vector <Particle> read(std::ifstream & particledat)
   int i = 0;
 
   //std::ofstream corrected("corrected.dat");
-  while (!particledat.eof())
+  std::string data;
+  std::string line;
+  while (std::getline(particledat, data))
   {
         //peek at first character.   
-    if (particledat.peek() == '#') particledat.ignore(256, '\n');  //does the line start with "#"? If so, ignore until new line
-    
+    //if (particledat.peek() == '#') particledat.ignore(256, '\n');  //does the line start with "#"? If so, ignore until new line
+    std::vector<std::string> line = split(data, ' ');
+    if (line[0] == "#");  //does the line start with "#"? If so, do nothing in this iteration of loop.
+
     else
     {
-      particledat >> m >> x >> y >> z >> vx >> vy >> vz >> u >> rho >> temp >> ye >> e;
+
+      m   = std::stod(line[0]);
+      x   = std::stod(line[1]);
+      y   = std::stod(line[2]);
+      z   = std::stod(line[3]);
+      vx  = std::stod(line[4]);
+      vy  = std::stod(line[5]);
+      vz  = std::stod(line[6]);
+      u   = std::stod(line[7]);
+      rho = std::stod(line[8]);
+      const double temp = std::stod(line[9]);
+      const double ye   = std::stod(line[10]);
+      const double e    = std::stod(line[11]);
+
+
+
+
+
+
+      //particledat >> m >> x >> y >> z >> vx >> vy >> vz >> u >> rho >> temp >> ye >> e;
       
       //RESTRICTION ON DOMAIN
       //If domain_restricted=0, enter block.
       //If domain is restricted, but particle lies in subdomain, enter block. Else do nothing.
-
-      double r = sqrt(x*x + y*y + z*z);
+      double radius = sqrt(x*x + y*y + z*z);
       double vnorm = sqrt(vx*vx + vy*vy + vz*vz);
       double phi = atan2(y,x);
 
-      //(pi/-2 < phi && phi < pi/3 && r < 40 ) || ( phi > pi/3 || phi < pi/-2 )  
+      //example of restriction
+      //(pi/-2 < phi && phi < pi/3 && radius < 40 ) || ( phi > pi/3 || phi < pi/-2 )  
+
+
+
+
 
       if
       (
@@ -314,18 +463,237 @@ std::vector <Particle> read(std::ifstream & particledat)
 
 
 
+//std::vector<Heat_profile> all_heat_profiles;
+//all_heat_profiles[1].time[0:-1]
+
+
+std::vector<std::string> generate_files(std::string path, std::string ending)       //opening any folder and saving all file-names in a vector<string>
+{
+    DIR    *dir;
+    dirent *pdir;
+    std::string entry;
+    std::vector<std::string> files;
+    printf("%s\n", path.c_str());
+
+    dir = opendir(path.c_str());
+    std::cout << typeid(path.c_str()).name() << std::endl;
+    while ((pdir = readdir(dir)) !=NULL   )
+    {
+      entry = pdir->d_name;
+      //printf("first %s, %lu\n", entry.c_str(), entry.length());
+      int min_char = ending.length();
+      if (int(entry.length())>min_char && entry.substr( int(entry.length()) - min_char ) ==ending)
+      {
+        files.push_back(entry);
+        //printf("pdir->d_name: %s\n", files[files.size()-1].c_str());
+
+      }
+    }
+
+    return files;
+}
 
 
 
 
 
+void set_heat_profile(std::string dir, std::vector<Heat_profile> * all_heat_profiles)
+{//create vector of heating profiles based on all relevant files in dir
+
+  //move to dir;
+  std::vector<std::string> files = generate_files(dir, "h5.dat");       //opening any folder and saving all file-names in a vector<string>
+  std::string file_name;
+  printf("number of files: %i\n", int(files.size()));
+  //begin loop over files
+    for (int i = 0; i < int(files.size()); ++i){ 
+      file_name = dir+"/"+files[i];
+      std::ifstream heatingdat(file_name);
+      std::vector<double>  time; //seconds
+      std::vector<double>  dt;    //seconds
+      std::vector<double>  temp;
+      std::vector<double>  dens;
+      std::vector<double>  entr;
+      std::vector<double>  heat_rate; //ergs/s/g
+      std::vector<double>  ye;
+      read_heating(heatingdat, &time, &dt, &temp, &dens, &entr, &heat_rate, &ye);
+      
+      //TO DO: remove initial vector elements for temp > 3e9 K
+      bool keepgoing=1;
+      int j =0;
+      while(keepgoing)
+      {
+        if (temp[j] < 3.0)
+        {
+          keepgoing=0;
+        } else {
+          time.erase(time.begin());
+          dt.erase(dt.begin());
+          temp.erase(temp.begin());
+          dens.erase(dens.begin());
+          entr.erase(entr.begin());
+          heat_rate.erase(heat_rate.begin());
+          ye.erase(ye.begin());
+        }
+        ++j;
+      }
+
+
+      Heat_profile h(time, dt, temp, dens, entr, heat_rate, ye);
+  
+      double dh=0;
+      double total_heat=0;
+      for (int i = 0; i < int(dt.size()); ++i)
+      {
+        dh=dt[i]*heat_rate[i];
+        total_heat += dh;
+      }
+
+      const double proton_mass = 1.673e-24; //atomic mass unit to grams
+      double erg_per_g_2_MeV_per_nuc= 6.2e5*proton_mass;
+      total_heat *= erg_per_g_2_MeV_per_nuc;
+      printf("total_heat = %g\n", total_heat);
+      all_heat_profiles->push_back(h);
+    }
+  //end loop over files
+
+
+    //exit(1);
 
 
 
+}
+
+
+void assign_heat_profile_to_particle(std::vector<Particle> * particle_list, 
+                                     std::vector<Heat_profile> * all_heat_profiles)
+{//in beginning of simulation, assign each particle a heating profile based solely on Y_e
+
+  printf("size of all_heat_profiles: %i\n",int(all_heat_profiles->size()) );
+  for (int i = 0; i < int(particle_list->size()); ++i)
+  {
+    Particle p = (*particle_list)[i];
+    double dist = 1;
+    double current_dist = dist;
+    for (int j = 0; j < int(all_heat_profiles->size()); ++j)
+    {
+      current_dist = fabs(p.ye-(*all_heat_profiles)[j].ye[0] );
+      if (current_dist<dist)
+      {
+        p.heat_prof=j;
+        dist = current_dist;
+      }
+
+    }
+
+
+    printf("p.id = %i, p.heat_prof= %i, p.ye =%g, all_profs.ye =%g\n",p.id, p.heat_prof, p.ye, (*all_heat_profiles)[p.heat_prof].ye[0]);
+
+
+    double min_ye=1;
+    double max_ye =0;
+    int min_index = 0;
+    int max_index = 0;
+    for (int i = 0; i < int(all_heat_profiles->size()); ++i)
+    {
+      if (min_ye>(*all_heat_profiles)[i].ye[0])
+      {
+        min_ye=(*all_heat_profiles)[i].ye[0];
+        min_index = i;
+      } if (max_ye<(*all_heat_profiles)[i].ye[0])
+      {
+        max_ye=(*all_heat_profiles)[i].ye[0];
+        max_index = i;
+
+      }
+    }
+    //printf("min:(all_profs.ye[%i])= %g, max: (all_profs.ye[%i])= %g\n", min_index, min_ye, max_index, max_ye);
+    (*particle_list)[i] = p;
+  }
+  //loop over particles
 
 
 
+}
 
+
+
+void add_skynet_heat(Particle *p, Heat_profile *h){
+  //at each time step, add heat to a particle p from its heat profile
+  const double proton_mass = 1.673e-24; //atomic mass unit to grams
+  const double one_sec = 2.27e5;  //1s = 2.27e5 codetime units
+
+  //skynet time is in seconds
+  double t_tot = T_Heat*one_sec;  //total heating time in code time
+  //const double time_step = 2;
+  double erg_per_g_2_MeV_per_nuc= 6.2e5*proton_mass;
+  double MeV_2_J = 1.602e-13;
+
+
+  double shift_avg_heating_down = 0.5;
+
+  //do time unit conversion here:
+  double t_sec = p->t/one_sec; //in seconds now
+
+
+  bool keepgoing=1;
+  int i = p->heat_prof_i;
+  if (i>=int((h->time).size())-1)
+  {
+    keepgoing=0;
+  }
+  while(keepgoing){
+
+
+    if (h->time[i] <= t_sec && h->time[i+1] >= t_sec) {
+
+      double del_t = h->time[i+1]-h->time[i];
+      double del_h = h->heat_rate[i+1] - h->heat_rate[i];
+
+
+
+      double H_weighted = (t_sec - h->time[i])*(del_h/del_t) + h->heat_rate[i]; 
+      double heat_rate = shift_avg_heating_down*H_weighted/one_sec* erg_per_g_2_MeV_per_nuc*MeV_2_J;//joules per nucleon per code unit of time
+      //double heat_rate = total_E/t_tot;
+
+      //convert back to cgs (c=1)
+      //const double total_E   = E_r * 1.602e-13;
+      double f_neutrino = 0.75;    
+      double delta_u = f_neutrino*heat_rate/proton_mass/1e-3/(3e8*3e8);
+
+
+      p->v = (sqrt(p->v.norm()*p->v.norm() + 2*delta_u*p->dt) )
+              /p->v.norm()*p->v;
+      //printf("heat added for particle %i, profile %i\n",p->id, p->heat_prof );
+
+      p->heat_prof_i = i;
+      keepgoing=0;
+    } else if (i > int((h->time).size())-1) {
+
+
+      keepgoing = 0;
+    }
+    ++i;
+
+/*      double dh=0;
+      double total_heat=0;
+      for (int j = 0; j < int(dt.size()); ++j)
+      {
+        dh=dt[j]*heat_rate[j];
+        total_heat += dh;
+      }
+
+      const double proton_mass = 1.673e-24; //atomic mass unit to grams
+      double erg_per_g_2_MeV_per_nuc= 6.2e5*proton_mass;
+      total_heat *= erg_per_g_2_MeV_per_nuc;
+      printf("total_heat = %g\n", total_heat);*/
+
+  }
+
+}
+
+
+
+/////////////////////////////////////////////////////////////////////////////////////////////////
 
 
 
@@ -544,12 +912,16 @@ void computation_time(std::string str, clock_t initial, std::ofstream & outf, do
 
 
 //Heating scheme:
-const double X_s = 0.1;     //seed nuclei mass fraction
-const double X_n = 1-X_s;   //neutron mass fraction
+double X_s = 0.1;     //seed nuclei mass fraction
+double X_n = 1-X_s;   //neutron mass fraction
 
+const double YE_avg = 0.0545;
+
+const double Z = 36;
+const double A = 118;
 const double B_s = 8.7;     //in MeV, binding energy for seed nuclei
 const double B_r = 8;       //in MeV, binding energy for r-process nuclei
-const double diff = 1.293;  //in MeV, this is neutron proton rest mass difference
+const double dn = 1.293;  //in MeV, this is neutron proton rest mass difference
 const double neutrino_f = .5;        //fraction of energy lost to neutrinos
 
 const double proton_mass = 1.673e-24; //atomic mass unit to grams
@@ -558,11 +930,23 @@ const double proton_mass = 1.673e-24; //atomic mass unit to grams
 const double erg_in_joules = 1e-7;   //1erg = 1e-7 joule
 
 
-void add_heat(Particle & p)
-{
-  //const double E_r = (1-neutrino_f)*(B_r - X_s*B_s - X_n*diff);
 
-  const double E_r = Heat;
+void add_heat(Particle & p)//, Heat_profile * h)
+{
+
+/*
+  X_s = A*p.ye/Z;
+  X_n = 1-X_s;
+
+  double E_r = Heat;
+*/
+
+  double A_Z = (2*Heat-B_r+dn )/(YE_avg*(dn-B_s));
+  double X_s = A_Z*p.ye;
+  double X_n = 1-X_s;
+
+  double E_r = (1-neutrino_f)*(B_r - X_s*B_s - X_n*dn);
+
   const double total_E   = E_r * 1.602e-13;    //joules per nucleon
   const double one_sec = 2.27e5;  //1s = 2.27e5 codetime units
   double t_tot = T_Heat*one_sec;  //total heating time in code time
@@ -570,6 +954,7 @@ void add_heat(Particle & p)
   double heat_rate = total_E/t_tot;
 
   //convert back to cgs (c=1)
+//const double total_E   = E_r * 1.602e-13;    //joules per nucleon
   double delta_u = heat_rate/proton_mass/1e-3/(3e8*3e8);
   /*
   double t_calc;
@@ -610,7 +995,7 @@ void add_heat(Particle & p)
 
 
 
-bool generate_smaller_tail(std::vector<Particle> & tail, double tol, double dcalc, std::ofstream & tofile)
+bool generate_tail(std::vector<Particle> & tail, double tol, double dcalc, std::ofstream & tofile, std::vector<Heat_profile> * all_heat_profiles)
 {
   std::vector<Particle> next_tail;
 
@@ -652,7 +1037,7 @@ bool generate_smaller_tail(std::vector<Particle> & tail, double tol, double dcal
           {
             Dcount = Dcount-1;
             std::cout << "Initially tracked "<< i_D_count <<" particles. Now down to "<< Dcount << std::endl; 
-            tail[n].dflag=0;     
+            tail[n].dflag=0;
           }
           save(tail[n], tofile, tail[n].t);       //save particle data to file, along with time halted
           
@@ -662,7 +1047,10 @@ bool generate_smaller_tail(std::vector<Particle> & tail, double tol, double dcal
         else                                      // if moving outwards, keep updating
         {
           //heat
-          add_heat(tail[n]);
+          add_skynet_heat(&tail[n], (&(*all_heat_profiles)[(tail[n]).heat_prof]));
+
+
+
           RKupdate(tail[n]);
           next_tail.push_back(tail[n]);
         }
@@ -747,7 +1135,7 @@ bool generate_smaller_tail(std::vector<Particle> & tail, double tol, double dcal
 
 
 
-bool delete_particles(std::vector<Particle> & tail, double tol, double dcalc, std::ofstream & tofile)
+bool reduce_tail(std::vector<Particle> & tail, double tol, double dcalc, std::ofstream & tofile, std::vector<Heat_profile> * all_heat_profiles)
 {
 
   //number of deleted particles
@@ -803,7 +1191,7 @@ bool delete_particles(std::vector<Particle> & tail, double tol, double dcalc, st
         else
         {
           //heat
-          add_heat(tail[n]);
+          add_skynet_heat(&tail[n], (&(*all_heat_profiles)[(tail[n]).heat_prof]));
           RKupdate(tail[n]);
           //next_tail.push_back(tail[n]);
         }
@@ -869,6 +1257,7 @@ std::vector<Particle> autevolve(std::vector<Particle> & tail, const double & tol
   //LOOP THROUGH tail. IF DCHECK =1, THEN CALCULATE DENSITY.
 
 
+  //choosing times at which we compute density
   double NUM = 100.;      //so we calculate densities/energies etc. 100 times
   std::vector<double> dtime;
   int exp = 0;
@@ -884,17 +1273,16 @@ std::vector<Particle> autevolve(std::vector<Particle> & tail, const double & tol
 
 
   int h_index = 0;
-  while (dtime[h_index]<T_Heat*2.27e5)
-  {
+  while (dtime[h_index]<T_Heat*2.27e5) {
     ++h_index;
   }
   dtime.insert(dtime.begin()+h_index, T_Heat*2.27e5);
 
 
 
-
   std::ofstream comp_time("comp_time.dat");
 
+  //flagging particles which will be tracked for density
   std::cout << "Finding particles to track..." << std::endl;
   set_dflags(tail);
 
@@ -907,6 +1295,10 @@ std::vector<Particle> autevolve(std::vector<Particle> & tail, const double & tol
   clock_t initial = clock();
 
 
+  std::vector<Heat_profile> all_heat_profiles;
+  std::string dir = "/Users/dhruv/Documents/Research/Visuals/Skynet_Run1";
+  set_heat_profile(dir, &all_heat_profiles);
+  assign_heat_profile_to_particle(&tail, &all_heat_profiles);
 
 
 
@@ -917,10 +1309,6 @@ std::vector<Particle> autevolve(std::vector<Particle> & tail, const double & tol
   {
     t = dtime[exp];   //catching all particles up to this time
 
-  
-
-
-
     //UPDATE ENERGIES
     for (int j = 0; j < int(tail.size()); ++j)
     {
@@ -928,9 +1316,19 @@ std::vector<Particle> autevolve(std::vector<Particle> & tail, const double & tol
     }
     
 
+    bool advance;
+    //faster if lots of particles being deleted
+    if (t<1.6e4)
+    {
+      advance = generate_tail(tail, tol, t, tofile, &all_heat_profiles);
+    }
+    //faster if not many particles being deleted
+    else
+    {
+      advance = reduce_tail(tail, tol, t, tofile, &all_heat_profiles);
+    }
 
-    bool advance = generate_smaller_tail(tail, tol, t, tofile);
-    
+    //bool advance = generate_tail(tail, tol, t, tofile);    
     if (advance==1)
     {
       density_calculation(tail);
@@ -948,22 +1346,6 @@ std::vector<Particle> autevolve(std::vector<Particle> & tail, const double & tol
     std::cout << "exp: " << exp <<std::endl;
     std::cout << "tail.size(): " << tail.size() <<std::endl;
     */
-
-    //faster if lots of particles being deleted
-    /*
-    if (t<1.6e4)
-    {
-      generate_smaller_tail(tail, t, dt, tofile);
-    }
-    //faster if not many particles being deleted
-    
-
-    else
-    {
-      delete_particles_same_tail(tail, t, dt, tofile);
-    }
-    */
-
 
 
     
@@ -1110,12 +1492,12 @@ int main() {
   std::cout << "Reading from: "<< particledat_<< std::endl;
   std::cout << "Tolerance: "<< TOL<< std::endl;
   std::cout << "Mass of black hole: "<< MASS<< std::endl;
-  std::cout << "Is domain restricted? 1 = yes, 0 = no: "<< domain_restricted<< std::endl;
+  std::cout << "Is domain restricted? 1 = yes, 0 = no: "<< domain_restricted << std::endl;
   std::cout << "Number of nearest neighbors per tracker particle: "<< nnn<< std::endl;
   std::cout << "Total evolution time: "<< EVOLTIME << std::endl;
 
 
-  std::cout << "Heating: " <<Heat << " MeV/nucleon."<< std::endl;
+  std::cout << "Heating: " << Heat << " MeV/nucleon."<< std::endl;
   std::cout<< "T_Heat: "<<T_Heat<<std::endl;
   /*
   std::cout<< "one_sec: "<<one_sec<<std::endl;
@@ -1141,6 +1523,16 @@ int main() {
 
   std::vector<Particle> tail;
   tail  = read(particledat);
+
+  double avgye=0;
+  double mtot = 0;
+  for (int i = 0; i < int(tail.size()); ++i)
+  {
+    avgye += tail[i].ye*tail[i].m;
+    mtot += tail[i].m;
+  }
+  avgye = avgye/mtot;
+  printf("mass avg of ye: %e\n", avgye);
 
 ///////////////////
 

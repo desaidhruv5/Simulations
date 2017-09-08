@@ -5,6 +5,8 @@
 #include <fstream>
 #include "Eigen_lib/Eigen/Dense"
 #include <cstdio>
+#include <omp.h>
+
 
 
 
@@ -138,14 +140,79 @@ void evolve (std::vector<Particle> & v)
 
 
 
+#define sq(x) x*x
 
-int main () {
+#define cu(x) x*x*x
+
+#define qu(x) x*x*x*x
+
+
+
+
+std::vector<std::string> split(std::string str, char delimiter)
+{
+  std::vector<std::string> internal;
+  std::stringstream ss(str); // Turn the string into a stream.
+  std::string tok;
+  
+  while(getline(ss, tok, delimiter)) {
+    internal.push_back(tok);
+  }
+  
+  return internal;
+}
+
+
+
+int main ()
+{
   
   Eigen::Vector3d r1(1.10000000000001,0,0);
 
-  std::cout << r1[0] << std::endl;
-  std::cout << r1[0]-1.1 << std::endl;
-  
-  
+  //std::cout << r1[0] << std::endl;
+  //std::cout << r1[0]-1.1 << std::endl;
+  std::ofstream fallbackdat("test.dat");
+  fallbackdat << "# m << x << y << z << vx << vy << vz << u << rho << temp << ye << e << t" << std::endl;
+  fallbackdat << "# m << x << y << z << vx << vy << vz << u << rho << temp << ye << e << t" << std::endl;
+  fallbackdat << "# m << x << y << z << vx << vy << vz << u << rho << temp << ye << e << t" << std::endl;
+  std::ifstream inputfile("test.dat");
+
+
+  std::string line;
+  std::getline(inputfile, line);
+
+  std::vector<std::string> v = split(line, ' ');
+
+  int i=0;
+  while(i<int(v.size()) )
+  {
+    std::cout << v[i] <<std::endl;
+    ++i;
+  }
+
+  int a =4;
+  goto AA;
+  std::cout.precision(17);
+  std::cout << sq(4)<<" "<<cu(3)<<" " << fmax(4.0010212123,4.0010212124) <<std::endl;
+  AA: ;
+
   return 0;
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
